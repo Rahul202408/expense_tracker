@@ -9,6 +9,7 @@ class TransactionTile extends StatelessWidget {
   final String amount;
   final bool isExpense;
   final DateTime? date;
+  final VoidCallback? onTap;
 
   const TransactionTile({
     super.key,
@@ -19,6 +20,7 @@ class TransactionTile extends StatelessWidget {
     required this.amount,
     required this.isExpense,
     this.date,
+    this.onTap,
   });
 
   String _formatDate(DateTime? d) {
@@ -57,7 +59,9 @@ class TransactionTile extends StatelessWidget {
         ? Colors.white.withValues(alpha: 0.1)
         : Colors.grey.shade200;
 
-    return ThreeDTiltCard(
+    return GestureDetector(
+      onTap: onTap,
+      child: ThreeDTiltCard(
       margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 7),
       maxTiltAngle: 0.06,
       elevation: isDark ? 2 : 6,
@@ -190,6 +194,7 @@ class TransactionTile extends StatelessWidget {
           ],
         ),
       ),
+    ),
     );
   }
 }

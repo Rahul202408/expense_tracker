@@ -5,7 +5,9 @@ import '../../widgets/three_d_tilt_card.dart';
 import 'login_screen.dart';
 import 'widgets/auth_header.dart';
 import 'widgets/auth_text_field.dart';
+import 'widgets/password_strength_indicator.dart';
 import '../../services/auth_service.dart';
+import '../../utils/security_validator.dart';
 
 class SignupScreen extends StatefulWidget {
   const SignupScreen({super.key});
@@ -28,7 +30,18 @@ class _SignupScreenState extends State<SignupScreen> {
   bool isLoading = false;
 
   @override
+  void initState() {
+    super.initState();
+    passwordController.addListener(_onPasswordChanged);
+  }
+
+  void _onPasswordChanged() {
+    setState(() {});
+  }
+
+  @override
   void dispose() {
+    passwordController.removeListener(_onPasswordChanged);
     nameController.dispose();
     phoneController.dispose();
     emailController.dispose();
@@ -47,13 +60,18 @@ class _SignupScreenState extends State<SignupScreen> {
       return;
     }
 
+    // Sanitize inputs to prevent script injection / XSS
+    final sanitizedName = SecurityValidator.sanitize(nameController.text);
+    final sanitizedPhone = SecurityValidator.sanitize(phoneController.text);
+    final sanitizedEmail = SecurityValidator.sanitize(emailController.text);
+
     setState(() => isLoading = true);
 
     final result = await _authService.signUp(
-      fullName: nameController.text.trim(),
-      phone: phoneController.text.trim(),
-      email: emailController.text.trim(),
-      password: passwordController.text.trim(),
+      fullName: sanitizedName,
+      phone: sanitizedPhone,
+      email: sanitizedEmail,
+      password: passwordController.text,
     );
 
     if (!mounted) return;
@@ -62,7 +80,7 @@ class _SignupScreenState extends State<SignupScreen> {
     if (result == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text("Account Created Successfully"),
+          content: Text("Account Created Successfully!"),
           backgroundColor: Colors.green,
         ),
       );
@@ -129,12 +147,7 @@ class _SignupScreenState extends State<SignupScreen> {
                           controller: nameController,
                           hintText: "Full Name",
                           prefixIcon: Icons.person_outline_rounded,
-                          validator: (value) {
-                            if (value == null || value.isEmpty) {
-                              return "Enter your name";
-                            }
-                            return null;
-                          },
+                          validator: SecurityValidator.validateName,
                         ),
 
                         const SizedBox(height: 16),
@@ -144,12 +157,7 @@ class _SignupScreenState extends State<SignupScreen> {
                           hintText: "Phone Number",
                           prefixIcon: Icons.phone_outlined,
                           keyboardType: TextInputType.phone,
-                          validator: (value) {
-                            if (value == null || value.length != 10) {
-                              return "Enter valid 10-digit phone number";
-                            }
-                            return null;
-                          },
+                          validator: SecurityValidator.validatePhone,
                         ),
 
                         const SizedBox(height: 16),
@@ -159,12 +167,7 @@ class _SignupScreenState extends State<SignupScreen> {
                           hintText: "Email Address",
                           prefixIcon: Icons.email_outlined,
                           keyboardType: TextInputType.emailAddress,
-                          validator: (value) {
-                            if (value == null || !value.contains("@")) {
-                              return "Enter valid email";
-                            }
-                            return null;
-                          },
+                          validator: SecurityValidator.validateEmail,
                         ),
 
                         const SizedBox(height: 16),
@@ -174,12 +177,12 @@ class _SignupScreenState extends State<SignupScreen> {
                           hintText: "Password",
                           prefixIcon: Icons.lock_outline,
                           isPassword: true,
-                          validator: (value) {
-                            if (value == null || value.length < 6) {
-                              return "Minimum 6 characters";
-                            }
-                            return null;
-                          },
+                          validator: SecurityValidator.validatePassword,
+                        ),
+
+                        // Interactive Password Strength Indicator & Requirements
+                        PasswordStrengthIndicator(
+                          password: passwordController.text,
                         ),
 
                         const SizedBox(height: 16),
@@ -196,6 +199,7 @@ class _SignupScreenState extends State<SignupScreen> {
                             return null;
                           },
                         ),
+
 
                         const SizedBox(height: 16),
 

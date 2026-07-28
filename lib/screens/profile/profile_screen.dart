@@ -4,11 +4,13 @@ import 'package:provider/provider.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
 import '../../services/auth_service.dart';
+import '../../services/notification_service.dart';
 import '../../providers/theme_provider.dart';
 import '../../widgets/three_d_tilt_card.dart';
 import '../splash/splash_screen.dart';
 import 'edit_profile_screen.dart';
 import 'change_password_screen.dart';
+import 'security_settings_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -252,6 +254,23 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       context,
                       MaterialPageRoute(
                         builder: (_) => const ChangePasswordScreen(),
+                      ),
+                    );
+                  },
+                ),
+
+                _build3DTile(
+                  context,
+                  icon: Icons.shield_rounded,
+                  iconColor: const Color(0xff11998E),
+                  title: "Security & App Lock",
+                  cardColor: cardColor,
+                  textColor: textColor,
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const SecuritySettingsScreen(),
                       ),
                     );
                   },
@@ -551,6 +570,22 @@ class _ProfileScreenState extends State<ProfileScreen> {
             style: TextStyle(fontSize: 14, height: 1.4),
           ),
           actions: [
+            TextButton(
+              onPressed: () {
+                NotificationService().showLocalNotification(
+                  id: 1,
+                  title: "Test Notification 🔔",
+                  body: "Notifications are working perfectly in Expense Tracker!",
+                );
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text("Test notification sent!"),
+                    backgroundColor: Colors.teal,
+                  ),
+                );
+              },
+              child: const Text("Send Test"),
+            ),
             ElevatedButton(
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xff00BCD4),
@@ -564,19 +599,28 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  void _showDeleteDialog(BuildContext context) {
+  void _showDeleteDialog(BuildContext dialogContext) {
     showDialog(
-      context: context,
-      builder: (context) {
+      context: dialogContext,
+      builder: (ctx) {
         return AlertDialog(
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(20),
           ),
-          title: const Text("Delete Account"),
-          content: const Text("Are you sure?\n\nThis action cannot be undone."),
+          title: const Row(
+            children: [
+              Icon(Icons.warning_amber_rounded, color: Colors.redAccent),
+              SizedBox(width: 8),
+              Text("Delete Account"),
+            ],
+          ),
+          content: const Text(
+            "Are you sure you want to delete your account?\n\nAll your expense data will be permanently removed. This action cannot be undone.",
+            style: TextStyle(fontSize: 14),
+          ),
           actions: [
             TextButton(
-              onPressed: () => Navigator.pop(context),
+              onPressed: () => Navigator.pop(ctx),
               child: const Text("Cancel"),
             ),
             ElevatedButton(
@@ -584,8 +628,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 backgroundColor: Colors.redAccent,
               ),
               onPressed: () async {
-                Navigator.pop(context);
-                await deleteAccount(context);
+                Navigator.pop(ctx);
+                await deleteAccount();
               },
               child: const Text("Delete"),
             ),
@@ -595,22 +639,29 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  Future<void> deleteAccount(BuildContext context) async {
+  Future<void> deleteAccount() async {
     try {
       final user = FirebaseAuth.instance.currentUser;
       if (user == null) return;
 
+      final uid = user.uid;
+
+      // Delete user document in Firestore
       await FirebaseFirestore.instance
           .collection("users")
-          .doc(user.uid)
+          .doc(uid)
           .delete();
 
+      // Delete Firebase Auth User
       await user.delete();
 
       if (!mounted) return;
 
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Account deleted successfully")),
+        const SnackBar(
+          content: Text("Account deleted successfully"),
+          backgroundColor: Colors.green,
+        ),
       );
 
       Navigator.pushAndRemoveUntil(
@@ -618,11 +669,155 @@ class _ProfileScreenState extends State<ProfileScreen> {
         MaterialPageRoute(builder: (_) => const SplashScreen()),
         (route) => false,
       );
+    } on FirebaseAuthException catch (e) {
+      if (!mounted) return;
+
+      if (e.code == 'requires-recent-login') {
+        final currentUser = FirebaseAuth.instance.currentUser;
+        if (currentUser != null) {
+          _showReauthenticateDialog(currentUser);
+        }
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(e.message ?? "Failed to delete account"),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Error: $e")),
+        SnackBar(
+          content: Text("Error: $e"),
+          backgroundColor: Colors.red,
+        ),
       );
     }
   }
+
+  void _showReauthenticateDialog(User user) {
+    final passwordController = TextEditingController();
+    bool isSubmitting = false;
+
+    showDialog(
+      context: context,
+      builder: (dialogCtx) {
+        return StatefulBuilder(
+          builder: (builderCtx, setDialogState) {
+            return AlertDialog(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
+              ),
+              title: const Text("Confirm Password"),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    "For security reasons, please enter your password to confirm account deletion.",
+                    style: TextStyle(fontSize: 13),
+                  ),
+                  const SizedBox(height: 14),
+                  TextField(
+                    controller: passwordController,
+                    obscureText: true,
+                    decoration: const InputDecoration(
+                      labelText: "Current Password",
+                      prefixIcon: Icon(Icons.lock_outline),
+                    ),
+                  ),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(dialogCtx),
+                  child: const Text("Cancel"),
+                ),
+                ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.redAccent,
+                  ),
+                  onPressed: isSubmitting
+                      ? null
+                      : () async {
+                          final pass = passwordController.text.trim();
+                          if (pass.isEmpty) return;
+
+                          setDialogState(() => isSubmitting = true);
+
+                          try {
+                            final credential = EmailAuthProvider.credential(
+                              email: user.email!,
+                              password: pass,
+                            );
+
+                            await user.reauthenticateWithCredential(credential);
+
+                            final uid = user.uid;
+
+                            await FirebaseFirestore.instance
+                                .collection("users")
+                                .doc(uid)
+                                .delete();
+
+                            if (!dialogCtx.mounted || !mounted) return;
+
+                            Navigator.pop(dialogCtx);
+
+                            ScaffoldMessenger.of(context).showSnackBar(
+
+
+                              const SnackBar(
+                                content: Text("Account deleted successfully"),
+                                backgroundColor: Colors.green,
+                              ),
+                            );
+
+                            Navigator.pushAndRemoveUntil(
+                              context,
+                              MaterialPageRoute(builder: (_) => const SplashScreen()),
+                              (route) => false,
+                            );
+                          } on FirebaseAuthException catch (err) {
+                            setDialogState(() => isSubmitting = false);
+                            if (!mounted) return;
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text(err.message ?? "Incorrect password"),
+                                backgroundColor: Colors.red,
+                              ),
+                            );
+                          } catch (err) {
+                            setDialogState(() => isSubmitting = false);
+                            if (!mounted) return;
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text("Error: $err"),
+                                backgroundColor: Colors.red,
+                              ),
+                            );
+                          }
+                        },
+                  child: isSubmitting
+                      ? const SizedBox(
+                          height: 18,
+                          width: 18,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
+                        )
+                      : const Text("Confirm Delete"),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
 }
+
+
+

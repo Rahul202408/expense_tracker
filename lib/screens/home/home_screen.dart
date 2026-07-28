@@ -11,6 +11,7 @@ import '../../models/transaction_model.dart';
 import '../../services/transaction_service.dart';
 import 'widgets/empty_transaction.dart';
 import '../../services/dashboard_service.dart';
+import '../transaction/add_transaction_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   final Function(int)? onNavigateTab;
@@ -148,6 +149,16 @@ class _HomeScreenState extends State<HomeScreen> {
                                 amount: transaction.amount.toStringAsFixed(2),
                                 isExpense: transaction.isExpense,
                                 date: transaction.date,
+                                onTap: () {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (_) => AddTransactionScreen(
+                                        transaction: transaction,
+                                      ),
+                                    ),
+                                  );
+                                },
                               ),
                             );
                           },

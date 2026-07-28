@@ -6,7 +6,9 @@ import 'package:firebase_auth/firebase_auth.dart';
 import '../../widgets/app_logo.dart';
 import '../onboarding/onboarding_screen.dart';
 import '../auth/login_screen.dart';
-import '../home/home_screen.dart';
+import '../main_screen.dart';
+import '../../services/security_service.dart';
+import '../auth/app_lock_screen.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -61,10 +63,21 @@ class _SplashScreenState extends State<SplashScreen>
     final user = FirebaseAuth.instance.currentUser;
 
     if (user != null) {
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (_) => const HomeScreen()),
-      );
+      final isLockEnabled = await SecurityService().isAppLockEnabled();
+
+      if (!mounted) return;
+
+      if (isLockEnabled) {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => const AppLockScreen()),
+        );
+      } else {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => const MainScreen()),
+        );
+      }
     } else {
       Navigator.pushReplacement(
         context,

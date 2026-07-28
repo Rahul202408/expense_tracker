@@ -60,8 +60,6 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final item = onboardingData[currentPage];
-
     return Scaffold(
       backgroundColor: AppColors.background,
 

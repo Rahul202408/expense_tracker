@@ -16,17 +16,10 @@ class TransactionService {
   }
 
   /// Add Transaction
-  // Future<void> addTransaction(TransactionModel transaction) async {
-  //   await _transactionRef.add(transaction.toMap());
-  // }
   Future<void> addTransaction(TransactionModel transaction) async {
-    print("UID: $uid");
-    print("PATH: users/$uid/transactions");
-
     await _transactionRef.add(transaction.toMap());
-
-    print("Transaction Added Successfully");
   }
+
 
   /// Get Transactions
   Stream<List<TransactionModel>> getTransactions() {
