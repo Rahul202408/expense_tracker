@@ -11,6 +11,8 @@ import '../splash/splash_screen.dart';
 import 'edit_profile_screen.dart';
 import 'change_password_screen.dart';
 import 'security_settings_screen.dart';
+import 'terms_conditions_screen.dart';
+import 'app_guide_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -288,6 +290,40 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
                 _build3DTile(
                   context,
+                  icon: Icons.menu_book_rounded,
+                  iconColor: const Color(0xff00BCD4),
+                  title: "How to Use App",
+                  cardColor: cardColor,
+                  textColor: textColor,
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const AppGuideScreen(),
+                      ),
+                    );
+                  },
+                ),
+
+                _build3DTile(
+                  context,
+                  icon: Icons.gavel_rounded,
+                  iconColor: const Color(0xff11998E),
+                  title: "Terms & Conditions",
+                  cardColor: cardColor,
+                  textColor: textColor,
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const TermsConditionsScreen(),
+                      ),
+                    );
+                  },
+                ),
+
+                _build3DTile(
+                  context,
                   icon: Icons.privacy_tip_outlined,
                   iconColor: const Color(0xff4CAF50),
                   title: "Privacy Policy",
@@ -551,49 +587,360 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   void _showNotificationsDialog(BuildContext context) {
-    showDialog(
+    showModalBottomSheet(
       context: context,
-      builder: (context) {
-        return AlertDialog(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(24),
-          ),
-          title: const Row(
-            children: [
-              Icon(Icons.notifications_active_rounded, color: Color(0xff00BCD4)),
-              SizedBox(width: 10),
-              Text("Notifications"),
-            ],
-          ),
-          content: const Text(
-            "🔔 Push notifications are enabled! You will receive reminders for daily expense tracking and weekly budget health reports.",
-            style: TextStyle(fontSize: 14, height: 1.4),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () {
-                NotificationService().showLocalNotification(
-                  id: 1,
-                  title: "Test Notification 🔔",
-                  body: "Notifications are working perfectly in Expense Tracker!",
-                );
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text("Test notification sent!"),
-                    backgroundColor: Colors.teal,
-                  ),
-                );
-              },
-              child: const Text("Send Test"),
-            ),
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xff00BCD4),
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) {
+        bool isDailyEnabled = true;
+        TimeOfDay reminderTime = const TimeOfDay(hour: 20, minute: 0);
+        bool isBudgetAlertEnabled = true;
+        bool isLoaded = false;
+
+        return StatefulBuilder(
+          builder: (context, setStateModal) {
+            final isDark = Theme.of(context).brightness == Brightness.dark;
+            final sheetBg = isDark ? const Color(0xff1E293B) : Colors.white;
+            final textColor = isDark ? Colors.white : const Color(0xff1E293B);
+            final cardBg = isDark
+                ? const Color(0xff0F172A)
+                : const Color(0xffF1F5F9);
+            final subTextColor = isDark ? Colors.grey.shade400 : Colors.grey.shade600;
+
+            if (!isLoaded) {
+              Future.microtask(() async {
+                final daily = await NotificationService().getIsDailyReminderEnabled();
+                final time = await NotificationService().getDailyReminderTime();
+                final budget = await NotificationService().getIsBudgetAlertEnabled();
+                if (ctx.mounted) {
+                  setStateModal(() {
+                    isDailyEnabled = daily;
+                    reminderTime = time;
+                    isBudgetAlertEnabled = budget;
+                    isLoaded = true;
+                  });
+                }
+              });
+            }
+
+            String formatTime(TimeOfDay time) {
+              final now = DateTime.now();
+              final dt = DateTime(now.year, now.month, now.day, time.hour, time.minute);
+              return TimeOfDay.fromDateTime(dt).format(context);
+            }
+
+            return Container(
+              padding: EdgeInsets.only(
+                left: 24,
+                right: 24,
+                top: 16,
+                bottom: MediaQuery.of(context).viewInsets.bottom + 24,
               ),
-              onPressed: () => Navigator.pop(context),
-              child: const Text("OK"),
-            ),
-          ],
+              decoration: BoxDecoration(
+                color: sheetBg,
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.25),
+                    blurRadius: 20,
+                    offset: const Offset(0, -4),
+                  ),
+                ],
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Handle bar
+                  Center(
+                    child: Container(
+                      width: 44,
+                      height: 5,
+                      decoration: BoxDecoration(
+                        color: Colors.grey.withValues(alpha: 0.4),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 18),
+
+                  // Header Title
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(10),
+                        decoration: const BoxDecoration(
+                          shape: BoxShape.circle,
+                          gradient: LinearGradient(
+                            colors: [Color(0xff00BCD4), Color(0xff00838F)],
+                          ),
+                        ),
+                        child: const Icon(
+                          Icons.notifications_active_rounded,
+                          color: Colors.white,
+                          size: 22,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              "Notification Settings",
+                              style: TextStyle(
+                                fontSize: 19,
+                                fontWeight: FontWeight.w800,
+                                color: textColor,
+                              ),
+                            ),
+                            Text(
+                              "Manage reminders & budget alerts",
+                              style: TextStyle(
+                                fontSize: 13,
+                                color: subTextColor,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      IconButton(
+                        onPressed: () => Navigator.pop(context),
+                        icon: Icon(Icons.close_rounded, color: subTextColor),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 20),
+
+                  if (!isLoaded)
+                    const Padding(
+                      padding: EdgeInsets.symmetric(vertical: 30),
+                      child: Center(
+                        child: CircularProgressIndicator(color: Color(0xff00BCD4)),
+                      ),
+                    )
+                  else ...[
+                    // 1. Daily Reminder Card
+                    Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: cardBg,
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(
+                          color: isDark
+                              ? Colors.white.withValues(alpha: 0.08)
+                              : Colors.grey.shade200,
+                        ),
+                      ),
+                      child: Column(
+                        children: [
+                          Row(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.all(8),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xff00BCD4).withValues(alpha: 0.15),
+                                  shape: BoxShape.circle,
+                                ),
+                                child: const Icon(
+                                  Icons.alarm_rounded,
+                                  color: Color(0xff00BCD4),
+                                  size: 20,
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      "Daily Expense Reminder",
+                                      style: TextStyle(
+                                        fontSize: 15,
+                                        fontWeight: FontWeight.w700,
+                                        color: textColor,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 2),
+                                    Text(
+                                      "Get daily notification to record spending",
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        color: subTextColor,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              Switch(
+                                value: isDailyEnabled,
+                                activeColor: const Color(0xff00BCD4),
+                                onChanged: (val) async {
+                                  setStateModal(() => isDailyEnabled = val);
+                                  await NotificationService().setDailyReminderEnabled(val);
+                                },
+                              ),
+                            ],
+                          ),
+
+                          // Time Picker Row (Visible if Daily Reminder is Enabled)
+                          if (isDailyEnabled) ...[
+                            const SizedBox(height: 12),
+                            const Divider(height: 1),
+                            const SizedBox(height: 12),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Row(
+                                  children: [
+                                    Icon(
+                                      Icons.access_time_filled_rounded,
+                                      size: 18,
+                                      color: subTextColor,
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Text(
+                                      "Reminder Time",
+                                      style: TextStyle(
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w600,
+                                        color: textColor,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                Material(
+                                  color: Colors.transparent,
+                                  child: InkWell(
+                                    borderRadius: BorderRadius.circular(12),
+                                    onTap: () async {
+                                      final pickedTime = await showTimePicker(
+                                        context: context,
+                                        initialTime: reminderTime,
+                                      );
+                                      if (pickedTime != null) {
+                                        setStateModal(() => reminderTime = pickedTime);
+                                        await NotificationService().setDailyReminderTime(pickedTime);
+                                        if (context.mounted) {
+                                          ScaffoldMessenger.of(context).showSnackBar(
+                                            SnackBar(
+                                              content: Text(
+                                                "Reminder scheduled for ${formatTime(pickedTime)} daily! ⏰",
+                                              ),
+                                              backgroundColor: const Color(0xff00BCD4),
+                                              behavior: SnackBarBehavior.floating,
+                                            ),
+                                          );
+                                        }
+                                      }
+                                    },
+                                    child: Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 14,
+                                        vertical: 8,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: const Color(0xff00BCD4).withValues(alpha: 0.15),
+                                        borderRadius: BorderRadius.circular(12),
+                                        border: Border.all(
+                                          color: const Color(0xff00BCD4).withValues(alpha: 0.3),
+                                        ),
+                                      ),
+                                      child: Row(
+                                        children: [
+                                          Text(
+                                            formatTime(reminderTime),
+                                            style: const TextStyle(
+                                              fontSize: 14,
+                                              fontWeight: FontWeight.bold,
+                                              color: Color(0xff00BCD4),
+                                            ),
+                                          ),
+                                          const SizedBox(width: 4),
+                                          const Icon(
+                                            Icons.edit_outlined,
+                                            size: 14,
+                                            color: Color(0xff00BCD4),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+
+                    // 2. Budget Alert Card
+                    Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: cardBg,
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(
+                          color: isDark
+                              ? Colors.white.withValues(alpha: 0.08)
+                              : Colors.grey.shade200,
+                        ),
+                      ),
+                      child: Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: const Color(0xffFF9800).withValues(alpha: 0.15),
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(
+                              Icons.warning_amber_rounded,
+                              color: Color(0xffFF9800),
+                              size: 20,
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  "Budget Health Alerts",
+                                  style: TextStyle(
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.w700,
+                                    color: textColor,
+                                  ),
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  "Notify when spending exceeds 80% or 100%",
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: subTextColor,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          Switch(
+                            value: isBudgetAlertEnabled,
+                            activeColor: const Color(0xffFF9800),
+                            onChanged: (val) async {
+                              setStateModal(() => isBudgetAlertEnabled = val);
+                              await NotificationService().setBudgetAlertEnabled(val);
+                            },
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            );
+          },
         );
       },
     );

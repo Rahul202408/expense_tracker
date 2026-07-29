@@ -11,7 +11,10 @@ import '../../models/transaction_model.dart';
 import '../../services/transaction_service.dart';
 import 'widgets/empty_transaction.dart';
 import '../../services/dashboard_service.dart';
+import '../../services/notification_service.dart';
 import '../transaction/add_transaction_screen.dart';
+import '../../widgets/banner_ad_widget.dart';
+import '../../widgets/native_ad_widget.dart';
 
 class HomeScreen extends StatefulWidget {
   final Function(int)? onNavigateTab;
@@ -29,11 +32,12 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final textColor = isDark ? Colors.white : const Color(0xff1A202C);
+    final backgroundColor =
+        isDark ? const Color(0xff0F172A) : const Color(0xffF8FAFC);
+    final textColor = isDark ? Colors.white : const Color(0xff1E293B);
 
     return Scaffold(
-      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-
+      backgroundColor: backgroundColor,
       body: SafeArea(
         child: SingleChildScrollView(
           physics: const BouncingScrollPhysics(),
@@ -71,6 +75,14 @@ class _HomeScreenState extends State<HomeScreen> {
                   final expense = _dashboardService.totalExpense(transactions);
                   final balance = _dashboardService.totalBalance(transactions);
 
+                  // Check budget threshold alerts (80% / 100%)
+                  WidgetsBinding.instance.addPostFrameCallback((_) {
+                    NotificationService().checkAndTriggerBudgetAlert(
+                      expense: expense,
+                      income: income,
+                    );
+                  });
+
                   return Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -97,6 +109,11 @@ class _HomeScreenState extends State<HomeScreen> {
                         expense: expense,
                       ),
 
+                      const SizedBox(height: 8),
+
+                      // AdMob Banner Ad
+                      const BannerAdWidget(),
+
                       const SizedBox(height: 14),
 
                       Padding(
@@ -117,51 +134,69 @@ class _HomeScreenState extends State<HomeScreen> {
                       if (transactions.isEmpty)
                         const EmptyTransaction()
                       else
-                        ListView.builder(
-                          shrinkWrap: true,
-                          physics: const NeverScrollableScrollPhysics(),
-                          itemCount: transactions.length,
-                          itemBuilder: (context, index) {
-                            final transaction = transactions[index];
+                        Column(
+                          children: [
+                            ListView.builder(
+                              shrinkWrap: true,
+                              physics: const NeverScrollableScrollPhysics(),
+                              itemCount: transactions.length,
+                              itemBuilder: (context, index) {
+                                final transaction = transactions[index];
 
-                            return Dismissible(
-                              key: Key(transaction.id),
-                              onDismissed: (_) async {
-                                await _transactionService.deleteTransaction(
-                                  transaction.id,
+                                final tileWidget = Dismissible(
+                                  key: Key(transaction.id),
+                                  onDismissed: (_) async {
+                                    await _transactionService.deleteTransaction(
+                                      transaction.id,
+                                    );
+
+                                    if (context.mounted) {
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                        const SnackBar(
+                                          content: Text("Transaction Deleted"),
+                                        ),
+                                      );
+                                    }
+                                  },
+                                  child: TransactionTile(
+                                    icon: _getCategoryIcon(transaction.category),
+                                    iconColor: transaction.isExpense
+                                        ? Colors.red
+                                        : Colors.green,
+                                    title: transaction.title,
+                                    category: transaction.category,
+                                    amount: transaction.amount.toStringAsFixed(2),
+                                    isExpense: transaction.isExpense,
+                                    date: transaction.date,
+                                    onTap: () {
+                                      Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                          builder: (_) => AddTransactionScreen(
+                                            transaction: transaction,
+                                          ),
+                                        ),
+                                      );
+                                    },
+                                  ),
                                 );
 
-                                if (context.mounted) {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(
-                                      content: Text("Transaction Deleted"),
-                                    ),
+                                // Show Native Ad after 3rd transaction
+                                if (index == 2) {
+                                  return Column(
+                                    children: [
+                                      tileWidget,
+                                      const NativeAdWidget(),
+                                    ],
                                   );
                                 }
+
+                                return tileWidget;
                               },
-                              child: TransactionTile(
-                                icon: _getCategoryIcon(transaction.category),
-                                iconColor: transaction.isExpense
-                                    ? Colors.red
-                                    : Colors.green,
-                                title: transaction.title,
-                                category: transaction.category,
-                                amount: transaction.amount.toStringAsFixed(2),
-                                isExpense: transaction.isExpense,
-                                date: transaction.date,
-                                onTap: () {
-                                  Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (_) => AddTransactionScreen(
-                                        transaction: transaction,
-                                      ),
-                                    ),
-                                  );
-                                },
-                              ),
-                            );
-                          },
+                            ),
+                            if (transactions.isNotEmpty && transactions.length <= 2)
+                              const NativeAdWidget(),
+                          ],
                         ),
 
                       const SizedBox(height: 110),

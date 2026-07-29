@@ -8,6 +8,8 @@ import 'firebase_options.dart';
 import 'providers/connectivity_provider.dart';
 import 'providers/theme_provider.dart';
 import 'screens/splash/splash_screen.dart';
+import 'services/ad_service.dart';
+import 'services/app_open_ad_manager.dart';
 import 'services/notification_service.dart';
 import 'widgets/no_internet_banner.dart';
 
@@ -16,6 +18,8 @@ Future<void> main() async {
   await dotenv.load(fileName: ".env");
 
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+  await AdService.initialize();
+  AppOpenAdManager().initialize();
 
   await NotificationService().init();
   runApp(

@@ -1,7 +1,8 @@
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
-import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:timezone/data/latest_all.dart' as tz;
 import 'package:timezone/timezone.dart' as tz;
 
@@ -26,6 +27,15 @@ class NotificationService {
     description: 'This channel is used for important expense tracker notifications.',
     importance: Importance.high,
   );
+
+  static const String _keyDailyEnabled = 'pref_daily_reminder_enabled';
+  static const String _keyDailyHour = 'pref_daily_reminder_hour';
+  static const String _keyDailyMinute = 'pref_daily_reminder_minute';
+  static const String _keyBudgetAlertEnabled = 'pref_budget_alert_enabled';
+
+  // Track last triggered alert state to prevent duplicate notifications in a single session
+  bool _alert80Triggered = false;
+  bool _alert100Triggered = false;
 
   Future<void> init() async {
     // Initialize Time Zones for Daily Scheduled Notifications
@@ -111,8 +121,93 @@ class NotificationService {
       debugPrint("App opened from notification: ${message.notification?.title}");
     });
 
-    // 9. Schedule Daily Reminder Notification (Morning 7:00 AM every day)
-    await scheduleDailyNotification(hour: 7, minute: 0);
+    // 9. Sync Daily Notification from saved SharedPreferences preferences
+    await syncDailyNotificationFromPrefs();
+  }
+
+  /// Synchronize daily scheduled notification with SharedPreferences settings
+  Future<void> syncDailyNotificationFromPrefs() async {
+    final prefs = await SharedPreferences.getInstance();
+    final bool isEnabled = prefs.getBool(_keyDailyEnabled) ?? true;
+    final int hour = prefs.getInt(_keyDailyHour) ?? 20; // Default 8:00 PM
+    final int minute = prefs.getInt(_keyDailyMinute) ?? 0;
+
+    if (isEnabled) {
+      await scheduleDailyNotification(hour: hour, minute: minute);
+    } else {
+      await cancelDailyNotification();
+    }
+  }
+
+  /// Getters for Notification Preferences
+  Future<bool> getIsDailyReminderEnabled() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getBool(_keyDailyEnabled) ?? true;
+  }
+
+  Future<TimeOfDay> getDailyReminderTime() async {
+    final prefs = await SharedPreferences.getInstance();
+    final int hour = prefs.getInt(_keyDailyHour) ?? 20;
+    final int minute = prefs.getInt(_keyDailyMinute) ?? 0;
+    return TimeOfDay(hour: hour, minute: minute);
+  }
+
+  Future<bool> getIsBudgetAlertEnabled() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getBool(_keyBudgetAlertEnabled) ?? true;
+  }
+
+  /// Setters for Notification Preferences
+  Future<void> setDailyReminderEnabled(bool enabled) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_keyDailyEnabled, enabled);
+    await syncDailyNotificationFromPrefs();
+  }
+
+  Future<void> setDailyReminderTime(TimeOfDay time) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt(_keyDailyHour, time.hour);
+    await prefs.setInt(_keyDailyMinute, time.minute);
+    await syncDailyNotificationFromPrefs();
+  }
+
+  Future<void> setBudgetAlertEnabled(bool enabled) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_keyBudgetAlertEnabled, enabled);
+  }
+
+  /// Trigger budget alert notification if threshold (80% or 100%) is reached
+  Future<void> checkAndTriggerBudgetAlert({
+    required double expense,
+    required double income,
+  }) async {
+    final isEnabled = await getIsBudgetAlertEnabled();
+    if (!isEnabled || income <= 0) return;
+
+    final double ratio = expense / income;
+    if (ratio >= 1.0) {
+      if (!_alert100Triggered) {
+        _alert100Triggered = true;
+        await showLocalNotification(
+          id: 2002,
+          title: "🚨 Budget Limit Exceeded! (100%)",
+          body: "You have crossed 100% of your budget limit. Check your spending!",
+        );
+      }
+    } else if (ratio >= 0.8) {
+      if (!_alert80Triggered) {
+        _alert80Triggered = true;
+        await showLocalNotification(
+          id: 2001,
+          title: "⚠️ High Spending Alert! (80%)",
+          body: "You have spent over 80% of your total budget. Spend wisely!",
+        );
+      }
+    } else {
+      // Reset triggers if budget goes back below 80%
+      _alert80Triggered = false;
+      _alert100Triggered = false;
+    }
   }
 
   /// Show a local heads-up notification instantly
@@ -153,10 +248,10 @@ class NotificationService {
 
   /// Schedule a Daily Recurring Notification at given hour and minute (24-hour format)
   Future<void> scheduleDailyNotification({
-    int hour = 7,
-    int minute = 0,
-    String title = "Good Morning! ☀️",
-    String body = "આજના તમારા ખર્ચ (Expenses) ટ્રૅક કરવાનું શરૂ કરો!",
+    required int hour,
+    required int minute,
+    String title = "Daily Expense Reminder 📝",
+    String body = "Don't forget to track your daily expenses today!",
   }) async {
     try {
       final tz.TZDateTime now = tz.TZDateTime.now(tz.local);

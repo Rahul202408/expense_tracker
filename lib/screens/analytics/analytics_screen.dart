@@ -133,7 +133,7 @@ class AnalyticsScreen extends StatelessWidget {
                   );
                 }),
 
-                const SizedBox(height: 25),
+                const SizedBox(height: 110),
               ],
             ),
           );

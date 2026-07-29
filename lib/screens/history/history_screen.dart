@@ -5,6 +5,7 @@ import '../../services/transaction_service.dart';
 import '../home/widgets/transaction_tile.dart';
 import '../../widgets/three_d_tilt_card.dart';
 import '../transaction/add_transaction_screen.dart';
+import '../../widgets/native_ad_widget.dart';
 
 class HistoryScreen extends StatefulWidget {
   const HistoryScreen({super.key});
@@ -757,7 +758,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
                             (context, index) {
                               final transaction = filteredTransactions[index];
 
-                              return Dismissible(
+                              final tileWidget = Dismissible(
                                 key: Key(transaction.id),
                                 background: Container(
                                   margin: const EdgeInsets.symmetric(
@@ -809,6 +810,20 @@ class _HistoryScreenState extends State<HistoryScreen> {
                                   },
                                 ),
                               );
+
+                              // Insert Native Ad after 3rd item or at the end if fewer items
+                              if (index == 2 ||
+                                  (index == filteredTransactions.length - 1 &&
+                                      filteredTransactions.length <= 2)) {
+                                return Column(
+                                  children: [
+                                    tileWidget,
+                                    const NativeAdWidget(),
+                                  ],
+                                );
+                              }
+
+                              return tileWidget;
                             },
                             childCount: filteredTransactions.length,
                           ),

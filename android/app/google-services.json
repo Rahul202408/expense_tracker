@@ -9,7 +9,7 @@
       "client_info": {
         "mobilesdk_app_id": "1:567397044370:android:85abab00f5c1db19a5964b",
         "android_client_info": {
-          "package_name": "com.example.expense_tracker"
+          "package_name": "com.trtech.expense_tracker"
         }
       },
       "oauth_client": [
@@ -17,7 +17,7 @@
           "client_id": "567397044370-nbjjurp6gia283pi41spr0jk8fsfbe7o.apps.googleusercontent.com",
           "client_type": 1,
           "android_info": {
-            "package_name": "com.example.expense_tracker",
+            "package_name": "com.trtech.expense_tracker",
             "certificate_hash": "0ee51a0a364eee5d3585aa3630d61bfdbede88ed"
           }
         },

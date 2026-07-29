@@ -8,6 +8,7 @@ import 'widgets/auth_text_field.dart';
 import 'widgets/password_strength_indicator.dart';
 import '../../services/auth_service.dart';
 import '../../utils/security_validator.dart';
+import '../profile/terms_conditions_screen.dart';
 
 class SignupScreen extends StatefulWidget {
   const SignupScreen({super.key});
@@ -215,14 +216,36 @@ class _SignupScreenState extends State<SignupScreen> {
                               },
                             ),
                             Expanded(
-                              child: Text(
-                                "I agree to the Terms & Conditions",
-                                style: TextStyle(
-                                  color: isDark
-                                      ? Colors.grey.shade300
-                                      : const Color(0xff2D3748),
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w600,
+                              child: GestureDetector(
+                                onTap: () {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (_) => const TermsConditionsScreen(),
+                                    ),
+                                  );
+                                },
+                                child: Text.rich(
+                                  TextSpan(
+                                    text: "I agree to the ",
+                                    style: TextStyle(
+                                      color: isDark
+                                          ? Colors.grey.shade300
+                                          : const Color(0xff2D3748),
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                    children: const [
+                                      TextSpan(
+                                        text: "Terms & Conditions",
+                                        style: TextStyle(
+                                          color: Color(0xff11998E),
+                                          fontWeight: FontWeight.bold,
+                                          decoration: TextDecoration.underline,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
                                 ),
                               ),
                             ),
