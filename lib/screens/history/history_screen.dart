@@ -931,120 +931,113 @@ class _HistoryScreenState extends State<HistoryScreen> {
 
   Widget _buildEmptyState(String title, String subtitle, bool isDark, {required bool isNewUser}) {
     return Padding(
-      padding: const EdgeInsets.only(top: 20, bottom: 60),
+      padding: const EdgeInsets.only(top: 20, bottom: 60, left: 24, right: 24),
       child: Center(
-        child: ThreeDTiltCard(
-          maxTiltAngle: 0.08,
-          elevation: isDark ? 6 : 10,
-          margin: const EdgeInsets.symmetric(horizontal: 24),
-          shadowColor: const Color(0xff11998E),
-          borderRadius: BorderRadius.circular(28),
-          child: Container(
-            padding: const EdgeInsets.all(28),
-            decoration: BoxDecoration(
-              color: isDark ? const Color(0xff1E293B) : Colors.white,
-              borderRadius: BorderRadius.circular(28),
-              border: Border.all(
-                color: isDark
-                    ? Colors.white.withValues(alpha: 0.12)
-                    : Colors.grey.shade200,
+        child: Container(
+          padding: const EdgeInsets.all(28),
+          decoration: BoxDecoration(
+            color: isDark ? const Color(0xff1E293B) : Colors.white,
+            borderRadius: BorderRadius.circular(28),
+            border: Border.all(
+              color: isDark
+                  ? Colors.white.withValues(alpha: 0.12)
+                  : Colors.grey.shade200,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.06),
+                blurRadius: 20,
+                offset: const Offset(0, 8),
               ),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.04),
-                  blurRadius: 20,
-                  offset: const Offset(0, 8),
+            ],
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: LinearGradient(
+                    colors: isDark
+                        ? [
+                            const Color(0xff11998E).withValues(alpha: 0.25),
+                            const Color(0xff38EF7D).withValues(alpha: 0.1),
+                          ]
+                        : [
+                            const Color(0xffE0F2FE),
+                            const Color(0xffBAE6FD),
+                          ],
+                  ),
+                  border: Border.all(
+                    color: isDark
+                        ? const Color(0xff38EF7D).withValues(alpha: 0.3)
+                        : const Color(0xff0284C7).withValues(alpha: 0.2),
+                  ),
+                ),
+                child: Icon(
+                  isNewUser
+                      ? Icons.receipt_long_rounded
+                      : Icons.filter_alt_off_rounded,
+                  size: 44,
+                  color: isDark ? const Color(0xff38EF7D) : const Color(0xff0284C7),
+                ),
+              ),
+              const SizedBox(height: 18),
+              Text(
+                title,
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: isDark ? Colors.white : const Color(0xff1E293B),
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 8),
+              Text(
+                subtitle,
+                style: TextStyle(
+                  fontSize: 13,
+                  height: 1.4,
+                  fontWeight: FontWeight.w500,
+                  color: isDark ? Colors.grey.shade400 : Colors.grey.shade600,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              if (isNewUser) ...[
+                const SizedBox(height: 22),
+                ElevatedButton.icon(
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const AddTransactionScreen(),
+                      ),
+                    );
+                  },
+                  icon: const Icon(Icons.add_rounded, color: Colors.white, size: 20),
+                  label: const Text(
+                    "Add First Transaction",
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 14,
+                      color: Colors.white,
+                    ),
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 22,
+                      vertical: 12,
+                    ),
+                    backgroundColor: const Color(0xff11998E),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    elevation: 4,
+                  ),
                 ),
               ],
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(20),
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    gradient: LinearGradient(
-                      colors: isDark
-                          ? [
-                              const Color(0xff11998E).withValues(alpha: 0.25),
-                              const Color(0xff38EF7D).withValues(alpha: 0.1),
-                            ]
-                          : [
-                              const Color(0xffE0F2FE),
-                              const Color(0xffBAE6FD),
-                            ],
-                    ),
-                    border: Border.all(
-                      color: isDark
-                          ? const Color(0xff38EF7D).withValues(alpha: 0.3)
-                          : const Color(0xff0284C7).withValues(alpha: 0.2),
-                    ),
-                  ),
-                  child: Icon(
-                    isNewUser
-                        ? Icons.receipt_long_rounded
-                        : Icons.filter_alt_off_rounded,
-                    size: 44,
-                    color: isDark ? const Color(0xff38EF7D) : const Color(0xff0284C7),
-                  ),
-                ),
-                const SizedBox(height: 18),
-                Text(
-                  title,
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: isDark ? Colors.white : const Color(0xff1E293B),
-                  ),
-                  textAlign: TextAlign.center,
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  subtitle,
-                  style: TextStyle(
-                    fontSize: 13,
-                    height: 1.4,
-                    fontWeight: FontWeight.w500,
-                    color: isDark ? Colors.grey.shade400 : Colors.grey.shade600,
-                  ),
-                  textAlign: TextAlign.center,
-                ),
-                if (isNewUser) ...[
-                  const SizedBox(height: 22),
-                  ElevatedButton.icon(
-                    onPressed: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => const AddTransactionScreen(),
-                        ),
-                      );
-                    },
-                    icon: const Icon(Icons.add_rounded, color: Colors.white, size: 20),
-                    label: const Text(
-                      "Add First Transaction",
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 14,
-                        color: Colors.white,
-                      ),
-                    ),
-                    style: ElevatedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 22,
-                        vertical: 12,
-                      ),
-                      backgroundColor: const Color(0xff11998E),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                      elevation: 4,
-                    ),
-                  ),
-                ],
-              ],
-            ),
+            ],
           ),
         ),
       ),
