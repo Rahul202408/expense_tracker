@@ -36,15 +36,43 @@ class SecurityValidator {
     return null;
   }
 
-  /// Phone number validation
+  /// Real Mobile Phone Number Validation
   static String? validatePhone(String? value) {
     if (value == null || value.trim().isEmpty) {
       return "Please enter your phone number";
     }
     final phone = value.trim();
+
+    // Must be exactly 10 digits
     if (!RegExp(r'^[0-9]{10}$').hasMatch(phone)) {
       return "Enter a valid 10-digit phone number";
     }
+
+    // Must start with valid mobile digits (6, 7, 8, or 9)
+    if (!RegExp(r'^[6-9]').hasMatch(phone)) {
+      return "Phone number must start with 6, 7, 8, or 9";
+    }
+
+    // Reject dummy repeated numbers (e.g., 9999999999, 8888888888, 7777777777)
+    if (RegExp(r'^(\d)\1{9}$').hasMatch(phone)) {
+      return "Please enter a valid mobile number";
+    }
+
+    // Reject dummy sequential numbers (e.g., 1234567890, 9876543210)
+    final dummyNumbers = [
+      '1234567890',
+      '0123456789',
+      '9876543210',
+      '0987654321',
+      '6789012345',
+      '7890123456',
+      '8901234567',
+      '9012345678',
+    ];
+    if (dummyNumbers.contains(phone)) {
+      return "Please enter a valid mobile number";
+    }
+
     return null;
   }
 

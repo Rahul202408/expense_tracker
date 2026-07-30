@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../../widgets/primary_button.dart';
 import '../../widgets/three_d_tilt_card.dart';
@@ -158,6 +159,10 @@ class _SignupScreenState extends State<SignupScreen> {
                           hintText: "Phone Number",
                           prefixIcon: Icons.phone_outlined,
                           keyboardType: TextInputType.phone,
+                          maxLength: 10,
+                          inputFormatters: [
+                            FilteringTextInputFormatter.digitsOnly,
+                          ],
                           validator: SecurityValidator.validatePhone,
                         ),
 
