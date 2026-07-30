@@ -59,5 +59,5 @@ You have full control over your data:
 ## 6. Contact Us
 
 If you have any questions or concerns regarding this Privacy Policy, please contact us at:
-- **Email:** support@trtech.com / rahultejura@gmail.com
+- **Email:** rplaystore2026@gmail.com
 - **Developer:** TR Tech Solutions
