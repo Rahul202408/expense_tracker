@@ -42,7 +42,7 @@ class ExpenseTrackerApp extends StatelessWidget {
 
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      title: "Expense Tracker",
+      title: "Expense Tracker: Money Manager",
       theme: AppTheme.lightTheme,
       darkTheme: AppTheme.darkTheme,
       themeMode: themeProvider.themeMode,
