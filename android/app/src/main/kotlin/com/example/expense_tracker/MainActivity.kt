@@ -1,5 +1,3 @@
-package com.example.expense_tracker
+package com.trtech.expense_tracker
 
-import io.flutter.embedding.android.FlutterFragmentActivity
-
-class MainActivity : FlutterFragmentActivity()
+// Moved to com.trtech.expense_tracker.MainActivity
