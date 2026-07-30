@@ -58,6 +58,14 @@
       },
       "oauth_client": [
         {
+          "client_id": "567397044370-0gs8inhr2h58i37sbqo8qjqb0nbormlv.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.trtech.expense_tracker",
+            "certificate_hash": "aab1aa9a793009773ead2fb6ad87ec1bfd27ab99"
+          }
+        },
+        {
           "client_id": "567397044370-v3lldaotf0uuu3h5p3tbr0p4ul2o2ot7.apps.googleusercontent.com",
           "client_type": 3
         }
