@@ -48,13 +48,16 @@ class SecurityValidator {
     return null;
   }
 
-  /// Strong Password Criteria Validator
+  /// Strong Password Criteria Validator (8 to 12 characters)
   static String? validatePassword(String? value) {
     if (value == null || value.isEmpty) {
       return "Please enter a password";
     }
     if (value.length < 8) {
       return "Password must be at least 8 characters long";
+    }
+    if (value.length > 12) {
+      return "Password cannot exceed 12 characters";
     }
     if (!RegExp(r'[A-Z]').hasMatch(value)) {
       return "Password must include at least 1 uppercase letter (A-Z)";
@@ -73,7 +76,7 @@ class SecurityValidator {
 
   /// Evaluates password strength breakdown for UI indicators
   static PasswordStrengthResult evaluatePasswordStrength(String password) {
-    final hasMinLength = password.length >= 8;
+    final hasMinLength = password.length >= 8 && password.length <= 12;
     final hasUppercase = RegExp(r'[A-Z]').hasMatch(password);
     final hasLowercase = RegExp(r'[a-z]').hasMatch(password);
     final hasNumber = RegExp(r'[0-9]').hasMatch(password);

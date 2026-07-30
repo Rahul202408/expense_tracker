@@ -178,6 +178,7 @@ class _SignupScreenState extends State<SignupScreen> {
                           hintText: "Password",
                           prefixIcon: Icons.lock_outline,
                           isPassword: true,
+                          maxLength: 12,
                           validator: SecurityValidator.validatePassword,
                         ),
 
@@ -193,6 +194,7 @@ class _SignupScreenState extends State<SignupScreen> {
                           hintText: "Confirm Password",
                           prefixIcon: Icons.lock_outline,
                           isPassword: true,
+                          maxLength: 12,
                           validator: (value) {
                             if (value != passwordController.text) {
                               return "Passwords do not match";

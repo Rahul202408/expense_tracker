@@ -73,7 +73,7 @@ class PasswordStrengthIndicator extends StatelessWidget {
           spacing: 8,
           runSpacing: 4,
           children: [
-            _buildRequirementChip("8+ Chars", result.hasMinLength, isDark),
+            _buildRequirementChip("8-12 Chars", result.hasMinLength, isDark),
             _buildRequirementChip("Uppercase (A-Z)", result.hasUppercase, isDark),
             _buildRequirementChip("Lowercase (a-z)", result.hasLowercase, isDark),
             _buildRequirementChip("Number (0-9)", result.hasNumber, isDark),

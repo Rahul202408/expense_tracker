@@ -272,12 +272,16 @@ class _LoginScreenState extends State<LoginScreen> {
                           hintText: "Password",
                           prefixIcon: Icons.lock_outline,
                           isPassword: true,
+                          maxLength: 12,
                           validator: (value) {
                             if (value == null || value.isEmpty) {
                               return "Please enter password";
                             }
-                            if (value.length < 6) {
-                              return "Minimum 6 characters";
+                            if (value.length < 8) {
+                              return "Minimum 8 characters";
+                            }
+                            if (value.length > 12) {
+                              return "Maximum 12 characters";
                             }
                             return null;
                           },
