@@ -6,6 +6,7 @@ class AuthTextField extends StatefulWidget {
   final IconData prefixIcon;
   final bool isPassword;
   final TextInputType keyboardType;
+  final String? Function(String?)? validator;
   final int? maxLength;
 
   const AuthTextField({
