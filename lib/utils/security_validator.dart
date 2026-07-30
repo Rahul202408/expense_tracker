@@ -48,28 +48,30 @@ class SecurityValidator {
       return "Enter a valid 10-digit phone number";
     }
 
-    // Must start with valid mobile digits (6, 7, 8, or 9)
+    // Must start with valid Indian mobile digits (6, 7, 8, or 9)
     if (!RegExp(r'^[6-9]').hasMatch(phone)) {
       return "Phone number must start with 6, 7, 8, or 9";
     }
 
-    // Reject dummy repeated numbers (e.g., 9999999999, 8888888888, 7777777777)
+    // Reject dummy repeated numbers (e.g., 9999999999, 8888888888, 7777777777, 6666666666)
     if (RegExp(r'^(\d)\1{9}$').hasMatch(phone)) {
       return "Please enter a valid mobile number";
     }
 
-    // Reject dummy sequential numbers (e.g., 1234567890, 9876543210)
-    final dummyNumbers = [
-      '1234567890',
-      '0123456789',
-      '9876543210',
-      '0987654321',
-      '6789012345',
-      '7890123456',
-      '8901234567',
-      '9012345678',
-    ];
-    if (dummyNumbers.contains(phone)) {
+    // Reject any sequential numbers (ascending or descending e.g., 1234567890, 9876543210, 6789012345)
+    bool isSequential = true;
+    bool isReverseSequential = true;
+    for (int i = 0; i < phone.length - 1; i++) {
+      int curr = int.parse(phone[i]);
+      int next = int.parse(phone[i + 1]);
+      if ((curr + 1) % 10 != next) {
+        isSequential = false;
+      }
+      if ((curr - 1 + 10) % 10 != next) {
+        isReverseSequential = false;
+      }
+    }
+    if (isSequential || isReverseSequential) {
       return "Please enter a valid mobile number";
     }
 
