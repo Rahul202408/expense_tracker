@@ -377,7 +377,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 const SizedBox(height: 20),
 
                 Text(
-                  "Version 1.0.5",
+                  "Version 1.0.6",
                   style: TextStyle(
                     color: Colors.grey.shade400,
                     fontWeight: FontWeight.w600,
@@ -545,7 +545,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       ),
                       SizedBox(height: 4),
                       Text(
-                        "Version 1.0.5",
+                        "Version 1.0.6",
                         style: TextStyle(color: Colors.grey, fontSize: 13),
                       ),
                     ],
