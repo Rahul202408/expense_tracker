@@ -87,13 +87,10 @@ class _HomeScreenState extends State<HomeScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       // 3D Credit Card Balance
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 20),
-                        child: BalanceCard(
-                          income: income,
-                          expense: expense,
-                          balance: balance,
-                        ),
+                      BalanceCard(
+                        income: income,
+                        expense: expense,
+                        balance: balance,
                       ),
 
                       const SizedBox(height: 16),

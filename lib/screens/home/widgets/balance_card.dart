@@ -17,13 +17,13 @@ class BalanceCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ThreeDTiltCard(
-      margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       maxTiltAngle: 0.15,
       elevation: 16,
       shadowColor: const Color(0xff0D47A1),
       borderRadius: BorderRadius.circular(28),
       child: Container(
-        padding: const EdgeInsets.all(22),
+        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 20),
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(28),
           gradient: const LinearGradient(

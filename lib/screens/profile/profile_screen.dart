@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:provider/provider.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 import '../../services/auth_service.dart';
 import '../../services/notification_service.dart';
@@ -377,7 +378,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 const SizedBox(height: 20),
 
                 Text(
-                  "Version 1.0.6",
+                  "Version ${dotenv.get('APP_VERSION', fallback: '1.0.7')}",
                   style: TextStyle(
                     color: Colors.grey.shade400,
                     fontWeight: FontWeight.w600,
@@ -527,7 +528,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ),
             ],
           ),
-          content: const SingleChildScrollView(
+          content: SingleChildScrollView(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
@@ -535,7 +536,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 Center(
                   child: Column(
                     children: [
-                      Text(
+                      const Text(
                         "Expense Tracker",
                         style: TextStyle(
                           fontSize: 20,
@@ -543,10 +544,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           color: Color(0xff1E3C72),
                         ),
                       ),
-                      SizedBox(height: 4),
+                      const SizedBox(height: 4),
                       Text(
-                        "Version 1.0.6",
-                        style: TextStyle(color: Colors.grey, fontSize: 13),
+                        "Version ${dotenv.get('APP_VERSION', fallback: '1.0.7')}",
+                        style: const TextStyle(color: Colors.grey, fontSize: 13),
                       ),
                     ],
                   ),
