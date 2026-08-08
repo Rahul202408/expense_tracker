@@ -14,11 +14,27 @@
       },
       "oauth_client": [
         {
+          "client_id": "567397044370-hcrd99p3022l3o7bnasvs2kfeeflqmev.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.expense_tracker",
+            "certificate_hash": "8041cde1737e64be8f903a4b30f1968bce34d803"
+          }
+        },
+        {
           "client_id": "567397044370-nbjjurp6gia283pi41spr0jk8fsfbe7o.apps.googleusercontent.com",
           "client_type": 1,
           "android_info": {
             "package_name": "com.example.expense_tracker",
             "certificate_hash": "0ee51a0a364eee5d3585aa3630d61bfdbede88ed"
+          }
+        },
+        {
+          "client_id": "567397044370-r5q3ee5ooosvhb3lok5v7oo200m6esk8.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.expense_tracker",
+            "certificate_hash": "aab1aa9a793009773ead2fb6ad87ec1bfd27ab99"
           }
         },
         {
@@ -63,6 +79,22 @@
           "android_info": {
             "package_name": "com.trtech.expense_tracker",
             "certificate_hash": "aab1aa9a793009773ead2fb6ad87ec1bfd27ab99"
+          }
+        },
+        {
+          "client_id": "567397044370-4p8u10sas3gtdnvnfhbbpisols88iqtf.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.trtech.expense_tracker",
+            "certificate_hash": "787c2f32ba6e8a86a39d0895955900dcf1366d4a"
+          }
+        },
+        {
+          "client_id": "567397044370-aml6bivbav27hjq89grb3th44m1dtuaf.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.trtech.expense_tracker",
+            "certificate_hash": "8041cde1737e64be8f903a4b30f1968bce34d803"
           }
         },
         {

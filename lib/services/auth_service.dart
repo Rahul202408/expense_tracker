@@ -99,10 +99,7 @@ class AuthService {
   // ----------------------------
   Future<String?> googleSignIn() async {
     try {
-      final GoogleSignIn googleSignIn = GoogleSignIn(
-        serverClientId:
-            '567397044370-v3lldaotf0uuu3h5p3tbr0p4ul2o2ot7.apps.googleusercontent.com',
-      );
+      final GoogleSignIn googleSignIn = GoogleSignIn();
 
       await googleSignIn.signOut();
 
