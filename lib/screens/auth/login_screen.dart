@@ -338,60 +338,6 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                 ),
               ),
-
-              const SizedBox(height: 28),
-
-              Row(
-                children: [
-                  Expanded(
-                    child: Divider(
-                      color: isDark ? Colors.grey.shade800 : Colors.grey.shade300,
-                    ),
-                  ),
-
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 14),
-                    child: Text(
-                      "OR",
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        color: isDark ? Colors.grey.shade500 : Colors.grey.shade600,
-                        fontSize: 13,
-                      ),
-                    ),
-                  ),
-
-                  Expanded(
-                    child: Divider(
-                      color: isDark ? Colors.grey.shade800 : Colors.grey.shade300,
-                    ),
-                  ),
-                ],
-              ),
-
-              const SizedBox(height: 24),
-
-              SocialButton(
-                text: "Continue with Google",
-                image: "assets/images/google.png",
-                onTap: () async {
-                  final result = await _authService.googleSignIn();
-
-                  if (!mounted) return;
-
-                  if (result == null) {
-                    Navigator.pushReplacement(
-                      context,
-                      MaterialPageRoute(builder: (_) => const MainScreen()),
-                    );
-                  } else {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text(result)),
-                    );
-                  }
-                },
-              ),
-
               const SizedBox(height: 28),
 
               Row(
