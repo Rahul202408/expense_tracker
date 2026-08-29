@@ -6,6 +6,7 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 import '../../services/auth_service.dart';
 import '../../services/notification_service.dart';
+import '../../services/payment_notification_service.dart';
 import '../../providers/theme_provider.dart';
 import '../../widgets/three_d_tilt_card.dart';
 import '../splash/splash_screen.dart';
@@ -23,6 +24,23 @@ class ProfileScreen extends StatefulWidget {
 }
 
 class _ProfileScreenState extends State<ProfileScreen> {
+  bool _isAutoDetectEnabled = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadAutoDetectSetting();
+  }
+
+  Future<void> _loadAutoDetectSetting() async {
+    final enabled = await PaymentNotificationService().isAutoDetectEnabled();
+    if (mounted) {
+      setState(() {
+        _isAutoDetectEnabled = enabled;
+      });
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final AuthService authService = AuthService();
@@ -35,7 +53,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
     return Scaffold(
       backgroundColor: bgColor,
-
       appBar: AppBar(
         title: Text(
           "My Profile",
@@ -48,7 +65,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
         backgroundColor: Colors.transparent,
         elevation: 0,
       ),
-
       body: FutureBuilder<DocumentSnapshot<Map<String, dynamic>>>(
         future: authService.getUserData(),
         builder: (context, snapshot) {
@@ -65,7 +81,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
           return SingleChildScrollView(
             physics: const BouncingScrollPhysics(),
             padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-
             child: Column(
               children: [
                 // 3D Hero Profile Card
@@ -94,7 +109,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     ),
                     child: Column(
                       children: [
-                        // Avatar with glowing ring
+                        // Avatar
                         Container(
                           padding: const EdgeInsets.all(4),
                           decoration: BoxDecoration(
@@ -125,9 +140,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                 : null,
                           ),
                         ),
-
                         const SizedBox(height: 14),
-
                         Text(
                           fullName,
                           style: const TextStyle(
@@ -137,9 +150,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             letterSpacing: 0.3,
                           ),
                         ),
-
                         const SizedBox(height: 4),
-
                         Text(
                           email,
                           style: TextStyle(
@@ -147,7 +158,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             fontSize: 13,
                           ),
                         ),
-
                         if (phone.isNotEmpty) ...[
                           const SizedBox(height: 8),
                           Container(
@@ -176,7 +186,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
                 const SizedBox(height: 24),
 
-                // 3D Menu List Items
+                // Edit Profile Tile
                 _build3DTile(
                   context,
                   icon: Icons.person_outline_rounded,
@@ -192,11 +202,66 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             EditProfileScreen(fullName: fullName, phone: phone),
                       ),
                     );
-
                     if (result == true) {
                       setState(() {});
                     }
                   },
+                ),
+
+                // Auto-Detect Payments Switch Tile
+                ThreeDTiltCard(
+                  margin: const EdgeInsets.only(bottom: 12),
+                  maxTiltAngle: 0.04,
+                  elevation: 4,
+                  shadowColor: isDark ? const Color(0xff38EF7D) : Colors.black,
+                  borderRadius: BorderRadius.circular(20),
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: cardColor,
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(
+                        color: isDark
+                            ? Colors.white.withValues(alpha: 0.1)
+                            : Colors.grey.shade200,
+                      ),
+                    ),
+                    child: SwitchListTile(
+                      secondary: Container(
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: const Color(0xFF10B981).withValues(alpha: 0.15),
+                        ),
+                        child: const Icon(
+                          Icons.account_balance_wallet_rounded,
+                          color: Color(0xFF10B981),
+                          size: 22,
+                        ),
+                      ),
+                      title: Text(
+                        "Auto-Detect UPI Payments",
+                        style: TextStyle(
+                          fontWeight: FontWeight.w700,
+                          color: textColor,
+                        ),
+                      ),
+                      subtitle: Text(
+                        "GPay, PhonePe, Paytm, BHIM & Bank alerts",
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: isDark ? Colors.grey.shade400 : Colors.grey.shade600,
+                        ),
+                      ),
+                      value: _isAutoDetectEnabled,
+                      activeColor: const Color(0xff38EF7D),
+                      onChanged: (value) async {
+                        setState(() {
+                          _isAutoDetectEnabled = value;
+                        });
+                        await PaymentNotificationService().setAutoDetectEnabled(value);
+                      },
+                    ),
+                  ),
                 ),
 
                 // Dark Mode Switch Tile
@@ -348,13 +413,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 _build3DTile(
                   context,
                   icon: Icons.logout_rounded,
-                  iconColor: Colors.redAccent,
-                  title: "Logout",
+                  iconColor: const Color(0xffE53935),
+                  title: "Log Out",
                   cardColor: cardColor,
-                  textColor: Colors.redAccent,
+                  textColor: textColor,
                   onTap: () async {
                     await authService.logout();
-                    if (!context.mounted) return;
+                    if (!mounted) return;
                     Navigator.pushAndRemoveUntil(
                       context,
                       MaterialPageRoute(builder: (_) => const SplashScreen()),
@@ -363,29 +428,26 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   },
                 ),
 
-                _build3DTile(
-                  context,
-                  icon: Icons.delete_forever_rounded,
-                  iconColor: Colors.red.shade700,
-                  title: "Delete Account",
-                  cardColor: cardColor,
-                  textColor: Colors.red.shade700,
-                  onTap: () {
-                    _showDeleteDialog(context);
-                  },
-                ),
+                const SizedBox(height: 12),
 
-                const SizedBox(height: 20),
-
-                Text(
-                  "Version ${dotenv.get('APP_VERSION', fallback: '1.0.7')}",
-                  style: TextStyle(
-                    color: Colors.grey.shade400,
-                    fontWeight: FontWeight.w600,
+                TextButton.icon(
+                  onPressed: () => _showDeleteDialog(context),
+                  icon: const Icon(
+                    Icons.delete_forever_rounded,
+                    color: Colors.redAccent,
+                    size: 20,
+                  ),
+                  label: const Text(
+                    "Delete Account",
+                    style: TextStyle(
+                      color: Colors.redAccent,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 14,
+                    ),
                   ),
                 ),
 
-                const SizedBox(height: 80),
+                const SizedBox(height: 20),
               ],
             ),
           );
@@ -401,7 +463,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     required String title,
     required Color cardColor,
     required Color textColor,
-    VoidCallback? onTap,
+    required VoidCallback onTap,
   }) {
     return ThreeDTiltCard(
       margin: const EdgeInsets.only(bottom: 12),
@@ -409,43 +471,35 @@ class _ProfileScreenState extends State<ProfileScreen> {
       elevation: 4,
       shadowColor: iconColor,
       borderRadius: BorderRadius.circular(20),
-      onTap: onTap,
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         decoration: BoxDecoration(
           color: cardColor,
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
-            color: Colors.grey.withValues(alpha: 0.2),
+            color: Colors.grey.withValues(alpha: 0.1),
           ),
         ),
-        child: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: iconColor.withValues(alpha: 0.12),
-              ),
-              child: Icon(icon, color: iconColor, size: 22),
+        child: ListTile(
+          onTap: onTap,
+          leading: Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: iconColor.withValues(alpha: 0.15),
             ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Text(
-                title,
-                style: TextStyle(
-                  color: textColor,
-                  fontWeight: FontWeight.w700,
-                  fontSize: 15,
-                ),
-              ),
+            child: Icon(icon, color: iconColor, size: 22),
+          ),
+          title: Text(
+            title,
+            style: TextStyle(
+              fontWeight: FontWeight.w700,
+              color: textColor,
             ),
-            Icon(
-              Icons.arrow_forward_ios_rounded,
-              size: 16,
-              color: Colors.grey.shade400,
-            ),
-          ],
+          ),
+          trailing: Icon(
+            Icons.chevron_right_rounded,
+            color: textColor.withValues(alpha: 0.4),
+          ),
         ),
       ),
     );
@@ -454,492 +508,95 @@ class _ProfileScreenState extends State<ProfileScreen> {
   void _showPrivacyPolicyDialog(BuildContext context) {
     showDialog(
       context: context,
-      builder: (context) {
-        return AlertDialog(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(24),
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Text("Privacy Policy"),
+        content: const SingleChildScrollView(
+          child: Text(
+            "Expense Tracker values your privacy. We collect minimal personal information necessary to manage your financial data securely.\n\nAll your expense data is stored securely using Google Firebase encryption. We never share or sell your personal or financial information to any third party.",
+            style: TextStyle(fontSize: 14),
           ),
-          title: const Row(
-            children: [
-              Icon(Icons.security_rounded, color: Color(0xff4CAF50)),
-              SizedBox(width: 10),
-              Text(
-                "Privacy Policy",
-                style: TextStyle(fontWeight: FontWeight.bold),
-              ),
-            ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text("Close"),
           ),
-          content: const SingleChildScrollView(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  "🛡️ Data Privacy & Protection",
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-                ),
-                SizedBox(height: 8),
-                Text(
-                  "Your financial data is encrypted and securely stored using Google Firebase Cloud Services. We do not sell, share, or track your personal financial transactions with third-party advertisers.",
-                  style: TextStyle(fontSize: 14, height: 1.4),
-                ),
-                SizedBox(height: 14),
-                Text(
-                  "🔐 Authentication Safety",
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-                ),
-                SizedBox(height: 8),
-                Text(
-                  "Passwords are salted and hashed securely by Firebase Authentication. You have full control to edit your profile or delete your account at any time.",
-                  style: TextStyle(fontSize: 14, height: 1.4),
-                ),
-              ],
-            ),
-          ),
-          actions: [
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xff4CAF50),
-              ),
-              onPressed: () => Navigator.pop(context),
-              child: const Text("I Understand"),
-            ),
-          ],
-        );
-      },
+        ],
+      ),
     );
   }
 
   void _showAboutAppDialog(BuildContext context) {
     showDialog(
       context: context,
-      builder: (context) {
-        return AlertDialog(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(24),
-          ),
-          title: const Row(
-            children: [
-              Icon(Icons.account_balance_wallet_rounded, color: Color(0xff1E3C72)),
-              SizedBox(width: 10),
-              Text(
-                "About App",
-                style: TextStyle(fontWeight: FontWeight.bold),
-              ),
-            ],
-          ),
-          content: SingleChildScrollView(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Center(
-                  child: Column(
-                    children: [
-                      const Text(
-                        "Expense Tracker",
-                        style: TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.w800,
-                          color: Color(0xff1E3C72),
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        "Version ${dotenv.get('APP_VERSION', fallback: '1.0.7')}",
-                        style: const TextStyle(color: Colors.grey, fontSize: 13),
-                      ),
-                    ],
-                  ),
-                ),
-                SizedBox(height: 16),
-                Text(
-                  "✨ Key Features:",
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
-                ),
-                SizedBox(height: 8),
-                Text("• Interactive 3D Perspective Credit Card & Balance Tile"),
-                Text("• Real-time Income & Expense Categorization"),
-                Text("• Category Breakdown Pie Charts & Statistics"),
-                Text("• Date Range Filtered Search & History Log"),
-                Text("• Executive Dark Mode & Light Mode Theme Support"),
-                SizedBox(height: 14),
-                Text(
-                  "🛠️ Technology:",
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
-                ),
-                SizedBox(height: 6),
-                Text("Built with Flutter 3, Material 3, Firebase & Provider."),
-              ],
-            ),
-          ),
-          actions: [
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xff1E3C72),
-              ),
-              onPressed: () => Navigator.pop(context),
-              child: const Text("Close"),
-            ),
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Text("About Expense Tracker"),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text("Version: "),
+            const SizedBox(height: 8),
+            const Text("Developed by TR Tech Solutions."),
+            const SizedBox(height: 8),
+            const Text("An intuitive and smart money management app to help you track expenses, manage budgets, and save more."),
           ],
-        );
-      },
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text("Close"),
+          ),
+        ],
+      ),
     );
   }
 
   void _showNotificationsDialog(BuildContext context) {
-    showModalBottomSheet(
+    bool isDailyReminderEnabled = true;
+    bool isBudgetAlertEnabled = true;
+
+    showDialog(
       context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
       builder: (ctx) {
-        bool isDailyEnabled = true;
-        TimeOfDay reminderTime = const TimeOfDay(hour: 20, minute: 0);
-        bool isBudgetAlertEnabled = true;
-        bool isLoaded = false;
-
         return StatefulBuilder(
-          builder: (context, setStateModal) {
-            final isDark = Theme.of(context).brightness == Brightness.dark;
-            final sheetBg = isDark ? const Color(0xff1E293B) : Colors.white;
-            final textColor = isDark ? Colors.white : const Color(0xff1E293B);
-            final cardBg = isDark
-                ? const Color(0xff0F172A)
-                : const Color(0xffF1F5F9);
-            final subTextColor = isDark ? Colors.grey.shade400 : Colors.grey.shade600;
-
-            if (!isLoaded) {
-              Future.microtask(() async {
-                final daily = await NotificationService().getIsDailyReminderEnabled();
-                final time = await NotificationService().getDailyReminderTime();
-                final budget = await NotificationService().getIsBudgetAlertEnabled();
-                if (ctx.mounted) {
-                  setStateModal(() {
-                    isDailyEnabled = daily;
-                    reminderTime = time;
-                    isBudgetAlertEnabled = budget;
-                    isLoaded = true;
-                  });
-                }
-              });
-            }
-
-            String formatTime(TimeOfDay time) {
-              final now = DateTime.now();
-              final dt = DateTime(now.year, now.month, now.day, time.hour, time.minute);
-              return TimeOfDay.fromDateTime(dt).format(context);
-            }
-
-            return Container(
-              padding: EdgeInsets.only(
-                left: 24,
-                right: 24,
-                top: 16,
-                bottom: MediaQuery.of(context).viewInsets.bottom + 24,
+          builder: (dialogCtx, setStateModal) {
+            return AlertDialog(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
               ),
-              decoration: BoxDecoration(
-                color: sheetBg,
-                borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.25),
-                    blurRadius: 20,
-                    offset: const Offset(0, -4),
-                  ),
-                ],
-              ),
-              child: Column(
+              title: const Text("Notification Settings"),
+              content: Column(
                 mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Handle bar
-                  Center(
-                    child: Container(
-                      width: 44,
-                      height: 5,
-                      decoration: BoxDecoration(
-                        color: Colors.grey.withValues(alpha: 0.4),
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                    ),
+                  SwitchListTile(
+                    title: const Text("Daily Reminder"),
+                    subtitle: const Text("Receive a reminder to log expenses at 9:00 PM"),
+                    value: isDailyReminderEnabled,
+                    onChanged: (val) async {
+                      setStateModal(() => isDailyReminderEnabled = val);
+                      await NotificationService().setDailyReminderEnabled(val);
+                    },
                   ),
-                  const SizedBox(height: 18),
-
-                  // Header Title
-                  Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(10),
-                        decoration: const BoxDecoration(
-                          shape: BoxShape.circle,
-                          gradient: LinearGradient(
-                            colors: [Color(0xff00BCD4), Color(0xff00838F)],
-                          ),
-                        ),
-                        child: const Icon(
-                          Icons.notifications_active_rounded,
-                          color: Colors.white,
-                          size: 22,
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              "Notification Settings",
-                              style: TextStyle(
-                                fontSize: 19,
-                                fontWeight: FontWeight.w800,
-                                color: textColor,
-                              ),
-                            ),
-                            Text(
-                              "Manage reminders & budget alerts",
-                              style: TextStyle(
-                                fontSize: 13,
-                                color: subTextColor,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      IconButton(
-                        onPressed: () => Navigator.pop(context),
-                        icon: Icon(Icons.close_rounded, color: subTextColor),
-                      ),
-                    ],
+                  SwitchListTile(
+                    title: const Text("Budget Overspending Alert"),
+                    subtitle: const Text("Notify when reaching 90% of category budget"),
+                    value: isBudgetAlertEnabled,
+                    onChanged: (val) async {
+                      setStateModal(() => isBudgetAlertEnabled = val);
+                      await NotificationService().setBudgetAlertEnabled(val);
+                    },
                   ),
-                  const SizedBox(height: 20),
-
-                  if (!isLoaded)
-                    const Padding(
-                      padding: EdgeInsets.symmetric(vertical: 30),
-                      child: Center(
-                        child: CircularProgressIndicator(color: Color(0xff00BCD4)),
-                      ),
-                    )
-                  else ...[
-                    // 1. Daily Reminder Card
-                    Container(
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: cardBg,
-                        borderRadius: BorderRadius.circular(20),
-                        border: Border.all(
-                          color: isDark
-                              ? Colors.white.withValues(alpha: 0.08)
-                              : Colors.grey.shade200,
-                        ),
-                      ),
-                      child: Column(
-                        children: [
-                          Row(
-                            children: [
-                              Container(
-                                padding: const EdgeInsets.all(8),
-                                decoration: BoxDecoration(
-                                  color: const Color(0xff00BCD4).withValues(alpha: 0.15),
-                                  shape: BoxShape.circle,
-                                ),
-                                child: const Icon(
-                                  Icons.alarm_rounded,
-                                  color: Color(0xff00BCD4),
-                                  size: 20,
-                                ),
-                              ),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      "Daily Expense Reminder",
-                                      style: TextStyle(
-                                        fontSize: 15,
-                                        fontWeight: FontWeight.w700,
-                                        color: textColor,
-                                      ),
-                                    ),
-                                    const SizedBox(height: 2),
-                                    Text(
-                                      "Get daily notification to record spending",
-                                      style: TextStyle(
-                                        fontSize: 12,
-                                        color: subTextColor,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              Switch(
-                                value: isDailyEnabled,
-                                activeColor: const Color(0xff00BCD4),
-                                onChanged: (val) async {
-                                  setStateModal(() => isDailyEnabled = val);
-                                  await NotificationService().setDailyReminderEnabled(val);
-                                },
-                              ),
-                            ],
-                          ),
-
-                          // Time Picker Row (Visible if Daily Reminder is Enabled)
-                          if (isDailyEnabled) ...[
-                            const SizedBox(height: 12),
-                            const Divider(height: 1),
-                            const SizedBox(height: 12),
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                Row(
-                                  children: [
-                                    Icon(
-                                      Icons.access_time_filled_rounded,
-                                      size: 18,
-                                      color: subTextColor,
-                                    ),
-                                    const SizedBox(width: 8),
-                                    Text(
-                                      "Reminder Time",
-                                      style: TextStyle(
-                                        fontSize: 14,
-                                        fontWeight: FontWeight.w600,
-                                        color: textColor,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                                Material(
-                                  color: Colors.transparent,
-                                  child: InkWell(
-                                    borderRadius: BorderRadius.circular(12),
-                                    onTap: () async {
-                                      final pickedTime = await showTimePicker(
-                                        context: context,
-                                        initialTime: reminderTime,
-                                      );
-                                      if (pickedTime != null) {
-                                        setStateModal(() => reminderTime = pickedTime);
-                                        await NotificationService().setDailyReminderTime(pickedTime);
-                                        if (context.mounted) {
-                                          ScaffoldMessenger.of(context).showSnackBar(
-                                            SnackBar(
-                                              content: Text(
-                                                "Reminder scheduled for ${formatTime(pickedTime)} daily! ⏰",
-                                              ),
-                                              backgroundColor: const Color(0xff00BCD4),
-                                              behavior: SnackBarBehavior.floating,
-                                            ),
-                                          );
-                                        }
-                                      }
-                                    },
-                                    child: Container(
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 14,
-                                        vertical: 8,
-                                      ),
-                                      decoration: BoxDecoration(
-                                        color: const Color(0xff00BCD4).withValues(alpha: 0.15),
-                                        borderRadius: BorderRadius.circular(12),
-                                        border: Border.all(
-                                          color: const Color(0xff00BCD4).withValues(alpha: 0.3),
-                                        ),
-                                      ),
-                                      child: Row(
-                                        children: [
-                                          Text(
-                                            formatTime(reminderTime),
-                                            style: const TextStyle(
-                                              fontSize: 14,
-                                              fontWeight: FontWeight.bold,
-                                              color: Color(0xff00BCD4),
-                                            ),
-                                          ),
-                                          const SizedBox(width: 4),
-                                          const Icon(
-                                            Icons.edit_outlined,
-                                            size: 14,
-                                            color: Color(0xff00BCD4),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ],
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 14),
-
-                    // 2. Budget Alert Card
-                    Container(
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: cardBg,
-                        borderRadius: BorderRadius.circular(20),
-                        border: Border.all(
-                          color: isDark
-                              ? Colors.white.withValues(alpha: 0.08)
-                              : Colors.grey.shade200,
-                        ),
-                      ),
-                      child: Row(
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.all(8),
-                            decoration: BoxDecoration(
-                              color: const Color(0xffFF9800).withValues(alpha: 0.15),
-                              shape: BoxShape.circle,
-                            ),
-                            child: const Icon(
-                              Icons.warning_amber_rounded,
-                              color: Color(0xffFF9800),
-                              size: 20,
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  "Budget Health Alerts",
-                                  style: TextStyle(
-                                    fontSize: 15,
-                                    fontWeight: FontWeight.w700,
-                                    color: textColor,
-                                  ),
-                                ),
-                                const SizedBox(height: 2),
-                                Text(
-                                  "Notify when spending exceeds 80% or 100%",
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    color: subTextColor,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          Switch(
-                            value: isBudgetAlertEnabled,
-                            activeColor: const Color(0xffFF9800),
-                            onChanged: (val) async {
-                              setStateModal(() => isBudgetAlertEnabled = val);
-                              await NotificationService().setBudgetAlertEnabled(val);
-                            },
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
                 ],
               ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(ctx),
+                  child: const Text("Done"),
+                ),
+              ],
             );
           },
         );
@@ -991,16 +648,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
     try {
       final user = FirebaseAuth.instance.currentUser;
       if (user == null) return;
-
       final uid = user.uid;
 
-      // Delete user document in Firestore
-      await FirebaseFirestore.instance
-          .collection("users")
-          .doc(uid)
-          .delete();
-
-      // Delete Firebase Auth User
+      await FirebaseFirestore.instance.collection("users").doc(uid).delete();
       await user.delete();
 
       if (!mounted) return;
@@ -1017,155 +667,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
         MaterialPageRoute(builder: (_) => const SplashScreen()),
         (route) => false,
       );
-    } on FirebaseAuthException catch (e) {
-      if (!mounted) return;
-
-      if (e.code == 'requires-recent-login') {
-        final currentUser = FirebaseAuth.instance.currentUser;
-        if (currentUser != null) {
-          _showReauthenticateDialog(currentUser);
-        }
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(e.message ?? "Failed to delete account"),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text("Error: $e"),
+          content: Text("Error: "),
           backgroundColor: Colors.red,
         ),
       );
     }
   }
-
-  void _showReauthenticateDialog(User user) {
-    final passwordController = TextEditingController();
-    bool isSubmitting = false;
-
-    showDialog(
-      context: context,
-      builder: (dialogCtx) {
-        return StatefulBuilder(
-          builder: (builderCtx, setDialogState) {
-            return AlertDialog(
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(20),
-              ),
-              title: const Text("Confirm Password"),
-              content: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    "For security reasons, please enter your password to confirm account deletion.",
-                    style: TextStyle(fontSize: 13),
-                  ),
-                  const SizedBox(height: 14),
-                  TextField(
-                    controller: passwordController,
-                    obscureText: true,
-                    decoration: const InputDecoration(
-                      labelText: "Current Password",
-                      prefixIcon: Icon(Icons.lock_outline),
-                    ),
-                  ),
-                ],
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.pop(dialogCtx),
-                  child: const Text("Cancel"),
-                ),
-                ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.redAccent,
-                  ),
-                  onPressed: isSubmitting
-                      ? null
-                      : () async {
-                          final pass = passwordController.text.trim();
-                          if (pass.isEmpty) return;
-
-                          setDialogState(() => isSubmitting = true);
-
-                          try {
-                            final credential = EmailAuthProvider.credential(
-                              email: user.email!,
-                              password: pass,
-                            );
-
-                            await user.reauthenticateWithCredential(credential);
-
-                            final uid = user.uid;
-
-                            await FirebaseFirestore.instance
-                                .collection("users")
-                                .doc(uid)
-                                .delete();
-
-                            if (!dialogCtx.mounted || !mounted) return;
-
-                            Navigator.pop(dialogCtx);
-
-                            ScaffoldMessenger.of(context).showSnackBar(
-
-
-                              const SnackBar(
-                                content: Text("Account deleted successfully"),
-                                backgroundColor: Colors.green,
-                              ),
-                            );
-
-                            Navigator.pushAndRemoveUntil(
-                              context,
-                              MaterialPageRoute(builder: (_) => const SplashScreen()),
-                              (route) => false,
-                            );
-                          } on FirebaseAuthException catch (err) {
-                            setDialogState(() => isSubmitting = false);
-                            if (!mounted) return;
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text(err.message ?? "Incorrect password"),
-                                backgroundColor: Colors.red,
-                              ),
-                            );
-                          } catch (err) {
-                            setDialogState(() => isSubmitting = false);
-                            if (!mounted) return;
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text("Error: $err"),
-                                backgroundColor: Colors.red,
-                              ),
-                            );
-                          }
-                        },
-                  child: isSubmitting
-                      ? const SizedBox(
-                          height: 18,
-                          width: 18,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            color: Colors.white,
-                          ),
-                        )
-                      : const Text("Confirm Delete"),
-                ),
-              ],
-            );
-          },
-        );
-      },
-    );
-  }
 }
-
-
-
