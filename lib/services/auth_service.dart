@@ -6,23 +6,22 @@ class AuthService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
-  // Current User
   User? get currentUser => _auth.currentUser;
 
   Future<DocumentSnapshot<Map<String, dynamic>>> getUserData() async {
     final uid = FirebaseAuth.instance.currentUser!.uid;
-
     return FirebaseFirestore.instance.collection('users').doc(uid).get();
   }
 
-  // ----------------------------
-  // SIGN UP
-  // ----------------------------
   Future<String?> signUp({
     required String fullName,
     required String phone,
     required String email,
     required String password,
+    String country = "India",
+    String countryCode = "IN",
+    String currencySymbol = "₹",
+    String currencyCode = "INR",
   }) async {
     try {
       UserCredential credential = await _auth.createUserWithEmailAndPassword(
@@ -38,6 +37,10 @@ class AuthService {
           "fullName": fullName,
           "phone": phone,
           "email": email,
+          "country": country,
+          "countryCode": countryCode,
+          "currencySymbol": currencySymbol,
+          "currencyCode": currencyCode,
           "createdAt": FieldValue.serverTimestamp(),
         });
       }
@@ -62,15 +65,15 @@ class AuthService {
     });
   }
 
-  // ----------------------------
-  // LOGIN
-  // ----------------------------
   Future<String?> login({
     required String email,
     required String password,
   }) async {
     try {
-      await _auth.signInWithEmailAndPassword(email: email, password: password);
+      await _auth.signInWithEmailAndPassword(
+        email: email,
+        password: password,
+      );
 
       return null;
     } on FirebaseAuthException catch (e) {
@@ -80,9 +83,6 @@ class AuthService {
     }
   }
 
-  // ----------------------------
-  // RESET PASSWORD
-  // ----------------------------
   Future<String?> resetPassword({required String email}) async {
     try {
       await _auth.sendPasswordResetEmail(email: email);
@@ -94,9 +94,6 @@ class AuthService {
     }
   }
 
-  // ----------------------------
-  // GOOGLE SIGN IN
-  // ----------------------------
   Future<String?> googleSignIn() async {
     try {
       final GoogleSignIn googleSignIn = GoogleSignIn(
@@ -136,6 +133,10 @@ class AuthService {
             "phone": user.phoneNumber ?? "",
             "email": user.email ?? "",
             "photoUrl": user.photoURL ?? "",
+            "country": "India",
+            "countryCode": "IN",
+            "currencySymbol": "₹",
+            "currencyCode": "INR",
             "createdAt": FieldValue.serverTimestamp(),
           });
         }
@@ -149,9 +150,6 @@ class AuthService {
     }
   }
 
-  // ----------------------------
-  // LOGOUT
-  // ----------------------------
   Future<void> logout() async {
     await _auth.signOut();
   }

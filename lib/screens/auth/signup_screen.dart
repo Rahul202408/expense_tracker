@@ -8,6 +8,7 @@ import 'widgets/auth_header.dart';
 import 'widgets/auth_text_field.dart';
 import 'widgets/password_strength_indicator.dart';
 import '../../services/auth_service.dart';
+import '../../services/currency_service.dart';
 import '../../utils/security_validator.dart';
 import '../profile/terms_conditions_screen.dart';
 
@@ -27,6 +28,8 @@ class _SignupScreenState extends State<SignupScreen> {
   final emailController = TextEditingController();
   final passwordController = TextEditingController();
   final confirmPasswordController = TextEditingController();
+
+  CurrencyInfo _selectedCurrency = CurrencyService.defaultCurrency;
 
   bool agree = false;
   bool isLoading = false;
@@ -62,7 +65,6 @@ class _SignupScreenState extends State<SignupScreen> {
       return;
     }
 
-    // Sanitize inputs to prevent script injection / XSS
     final sanitizedName = SecurityValidator.sanitize(nameController.text);
     final sanitizedPhone = SecurityValidator.sanitize(phoneController.text);
     final sanitizedEmail = SecurityValidator.sanitize(emailController.text);
@@ -74,6 +76,10 @@ class _SignupScreenState extends State<SignupScreen> {
       phone: sanitizedPhone,
       email: sanitizedEmail,
       password: passwordController.text,
+      country: _selectedCurrency.country,
+      countryCode: _selectedCurrency.countryCode,
+      currencySymbol: _selectedCurrency.symbol,
+      currencyCode: _selectedCurrency.code,
     );
 
     if (!mounted) return;
@@ -98,6 +104,43 @@ class _SignupScreenState extends State<SignupScreen> {
     }
   }
 
+  void _showCountryPicker(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (ctx) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          title: const Text("Select Country & Currency"),
+          content: SizedBox(
+            width: double.maxFinite,
+            child: ListView.builder(
+              shrinkWrap: true,
+              itemCount: CurrencyService.supportedCurrencies.length,
+              itemBuilder: (context, index) {
+                final curr = CurrencyService.supportedCurrencies[index];
+                final isSelected = curr.code == _selectedCurrency.code;
+
+                return ListTile(
+                  title: Text("${curr.country} (${curr.symbol})"),
+                  subtitle: Text("${curr.name} [${curr.code}]"),
+                  trailing: isSelected
+                      ? const Icon(Icons.check_circle, color: Color(0xff11998E))
+                      : null,
+                  onTap: () {
+                    setState(() {
+                      _selectedCurrency = curr;
+                    });
+                    Navigator.pop(ctx);
+                  },
+                );
+              },
+            ),
+          ),
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -105,25 +148,18 @@ class _SignupScreenState extends State<SignupScreen> {
 
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-
       body: SafeArea(
         child: SingleChildScrollView(
           physics: const BouncingScrollPhysics(),
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-
           child: Column(
             children: [
               const SizedBox(height: 20),
-
-              // 3D Header
               const AuthHeader(
                 title: "Create Account",
                 subtitle: "Start managing your money smartly today.",
               ),
-
               const SizedBox(height: 28),
-
-              // 3D Hero Form Card
               ThreeDTiltCard(
                 maxTiltAngle: 0.05,
                 elevation: isDark ? 4 : 12,
@@ -151,9 +187,7 @@ class _SignupScreenState extends State<SignupScreen> {
                           prefixIcon: Icons.person_outline_rounded,
                           validator: SecurityValidator.validateName,
                         ),
-
                         const SizedBox(height: 16),
-
                         AuthTextField(
                           controller: phoneController,
                           hintText: "Phone Number",
@@ -165,9 +199,7 @@ class _SignupScreenState extends State<SignupScreen> {
                           ],
                           validator: SecurityValidator.validatePhone,
                         ),
-
                         const SizedBox(height: 16),
-
                         AuthTextField(
                           controller: emailController,
                           hintText: "Email Address",
@@ -175,9 +207,7 @@ class _SignupScreenState extends State<SignupScreen> {
                           keyboardType: TextInputType.emailAddress,
                           validator: SecurityValidator.validateEmail,
                         ),
-
                         const SizedBox(height: 16),
-
                         AuthTextField(
                           controller: passwordController,
                           hintText: "Password",
@@ -186,14 +216,10 @@ class _SignupScreenState extends State<SignupScreen> {
                           maxLength: 12,
                           validator: SecurityValidator.validatePassword,
                         ),
-
-                        // Interactive Password Strength Indicator & Requirements
                         PasswordStrengthIndicator(
                           password: passwordController.text,
                         ),
-
                         const SizedBox(height: 16),
-
                         AuthTextField(
                           controller: confirmPasswordController,
                           hintText: "Confirm Password",
@@ -207,7 +233,70 @@ class _SignupScreenState extends State<SignupScreen> {
                             return null;
                           },
                         ),
+                        const SizedBox(height: 16),
 
+                        // Country & Currency Selection Field
+                        GestureDetector(
+                          onTap: () => _showCountryPicker(context),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 14,
+                            ),
+                            decoration: BoxDecoration(
+                              color: isDark
+                                  ? const Color(0xff0F172A)
+                                  : Colors.grey.shade100,
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(
+                                color: isDark
+                                    ? Colors.white.withValues(alpha: 0.1)
+                                    : Colors.grey.shade300,
+                              ),
+                            ),
+                            child: Row(
+                              children: [
+                                const Icon(
+                                  Icons.public_rounded,
+                                  color: Color(0xff11998E),
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        "Country & Currency",
+                                        style: TextStyle(
+                                          fontSize: 11,
+                                          color: isDark
+                                              ? Colors.grey.shade400
+                                              : Colors.grey.shade600,
+                                        ),
+                                      ),
+                                      Text(
+                                        "${_selectedCurrency.country} (${_selectedCurrency.symbol} ${_selectedCurrency.code})",
+                                        style: TextStyle(
+                                          fontSize: 14,
+                                          fontWeight: FontWeight.bold,
+                                          color: isDark
+                                              ? Colors.white
+                                              : Colors.black87,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                Icon(
+                                  Icons.arrow_drop_down_rounded,
+                                  color: isDark
+                                      ? Colors.grey.shade400
+                                      : Colors.grey.shade600,
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
 
                         const SizedBox(height: 16),
 
@@ -228,7 +317,8 @@ class _SignupScreenState extends State<SignupScreen> {
                                   Navigator.push(
                                     context,
                                     MaterialPageRoute(
-                                      builder: (_) => const TermsConditionsScreen(),
+                                      builder: (_) =>
+                                          const TermsConditionsScreen(),
                                     ),
                                   );
                                 },
@@ -248,7 +338,6 @@ class _SignupScreenState extends State<SignupScreen> {
                                         style: TextStyle(
                                           color: Color(0xff11998E),
                                           fontWeight: FontWeight.bold,
-                                          decoration: TextDecoration.underline,
                                         ),
                                       ),
                                     ],
@@ -258,9 +347,7 @@ class _SignupScreenState extends State<SignupScreen> {
                             ),
                           ],
                         ),
-
-                        const SizedBox(height: 16),
-
+                        const SizedBox(height: 24),
                         PrimaryButton(
                           text: "Create Account",
                           isLoading: isLoading,
@@ -271,9 +358,7 @@ class _SignupScreenState extends State<SignupScreen> {
                   ),
                 ),
               ),
-
               const SizedBox(height: 24),
-
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
@@ -284,23 +369,23 @@ class _SignupScreenState extends State<SignupScreen> {
                       fontWeight: FontWeight.w500,
                     ),
                   ),
-
                   TextButton(
                     onPressed: () {
-                      Navigator.pop(context);
+                      Navigator.pushReplacement(
+                        context,
+                        MaterialPageRoute(builder: (_) => const LoginScreen()),
+                      );
                     },
-                    child: Text(
+                    child: const Text(
                       "Login",
                       style: TextStyle(
-                        fontWeight: FontWeight.w800,
-                        fontSize: 15,
-                        color: isDark ? const Color(0xff38EF7D) : const Color(0xff1E3C72),
+                        color: Color(0xff11998E),
+                        fontWeight: FontWeight.bold,
                       ),
                     ),
                   ),
                 ],
               ),
-
               const SizedBox(height: 20),
             ],
           ),
