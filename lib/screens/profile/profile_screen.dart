@@ -2,12 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:provider/provider.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 import '../../services/auth_service.dart';
 import '../../services/notification_service.dart';
 import '../../services/payment_notification_service.dart';
+import '../../services/currency_service.dart';
 import '../../providers/theme_provider.dart';
+import '../../providers/currency_provider.dart';
 import '../../widgets/three_d_tilt_card.dart';
 import '../splash/splash_screen.dart';
 import 'edit_profile_screen.dart';
@@ -45,6 +46,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Widget build(BuildContext context) {
     final AuthService authService = AuthService();
     final themeProvider = Provider.of<ThemeProvider>(context);
+    final currencyProvider = Provider.of<CurrencyProvider>(context);
     final isDark = themeProvider.isDark;
 
     final bgColor = isDark ? const Color(0xff0F172A) : const Color(0xffF4F6FB);
@@ -206,6 +208,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       setState(() {});
                     }
                   },
+                ),
+
+                // Currency & Country Tile
+                _build3DTile(
+                  context,
+                  icon: Icons.language_rounded,
+                  iconColor: const Color(0xffFF9800),
+                  title: "Currency & Country (${currencyProvider.symbol} ${currencyProvider.code})",
+                  cardColor: cardColor,
+                  textColor: textColor,
+                  onTap: () => _showCurrencyDialog(context, currencyProvider),
                 ),
 
                 // Auto-Detect Payments Switch Tile
@@ -505,6 +518,41 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
+  void _showCurrencyDialog(BuildContext context, CurrencyProvider currencyProvider) {
+    showDialog(
+      context: context,
+      builder: (ctx) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          title: const Text("Select Currency & Country"),
+          content: SizedBox(
+            width: double.maxFinite,
+            child: ListView.builder(
+              shrinkWrap: true,
+              itemCount: CurrencyService.supportedCurrencies.length,
+              itemBuilder: (context, index) {
+                final curr = CurrencyService.supportedCurrencies[index];
+                final isSelected = curr.code == currencyProvider.code;
+
+                return ListTile(
+                  title: Text("${curr.name} (${curr.symbol})"),
+                  subtitle: Text("${curr.country} [${curr.countryCode}]"),
+                  trailing: isSelected
+                      ? const Icon(Icons.check_circle, color: Color(0xff10B981))
+                      : null,
+                  onTap: () async {
+                    await currencyProvider.setCurrency(curr);
+                    if (ctx.mounted) Navigator.pop(ctx);
+                  },
+                );
+              },
+            ),
+          ),
+        );
+      },
+    );
+  }
+
   void _showPrivacyPolicyDialog(BuildContext context) {
     showDialog(
       context: context,
@@ -533,15 +581,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
       builder: (ctx) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: const Text("About Expense Tracker"),
-        content: Column(
+        content: const Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text("Version: "),
-            const SizedBox(height: 8),
-            const Text("Developed by TR Tech Solutions."),
-            const SizedBox(height: 8),
-            const Text("An intuitive and smart money management app to help you track expenses, manage budgets, and save more."),
+            Text("Version: 1.1.4"),
+            SizedBox(height: 8),
+            Text("Developed by TR Tech Solutions."),
+            SizedBox(height: 8),
+            Text("An intuitive and smart money management app to help you track expenses, manage budgets, and save more."),
           ],
         ),
         actions: [
@@ -671,7 +719,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text("Error: "),
+          content: Text("Error: $e"),
           backgroundColor: Colors.red,
         ),
       );

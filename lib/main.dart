@@ -6,6 +6,7 @@ import 'package:provider/provider.dart';
 import 'core/theme/app_theme.dart';
 import 'firebase_options.dart';
 import 'providers/connectivity_provider.dart';
+import 'providers/currency_provider.dart';
 import 'providers/theme_provider.dart';
 import 'screens/splash/splash_screen.dart';
 import 'services/ad_service.dart';
@@ -27,6 +28,7 @@ Future<void> main() async {
       providers: [
         ChangeNotifierProvider(create: (_) => ThemeProvider()),
         ChangeNotifierProvider(create: (_) => ConnectivityProvider()),
+        ChangeNotifierProvider(create: (_) => CurrencyProvider()),
       ],
       child: const ExpenseTrackerApp(),
     ),
@@ -53,4 +55,3 @@ class ExpenseTrackerApp extends StatelessWidget {
     );
   }
 }
-
