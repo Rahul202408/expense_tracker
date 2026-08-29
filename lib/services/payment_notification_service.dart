@@ -42,7 +42,7 @@ class PaymentNotificationService {
     final isEnabled = await isAutoDetectEnabled();
     if (!isEnabled) return;
 
-    final fullContent = '\ \';
+    final fullContent = '$title $text';
     final amount = _extractAmount(fullContent);
 
     if (amount == null || amount <= 0) return;
@@ -67,7 +67,7 @@ class PaymentNotificationService {
 
   double? _extractAmount(String text) {
     final regexes = [
-      RegExp(r'(?:paid|sent|debited|spent|transferred|?|rs|inr)\s*[\:?\s]*([0-9,]+(?:\.[0-9]{1,2})?)', caseSensitive: false),
+      RegExp(r'(?:paid|sent|debited|spent|transferred|₹|rs|inr)\s*[\:₹\s]*([0-9,]+(?:\.[0-9]{1,2})?)', caseSensitive: false),
       RegExp(r'([0-9,]+(?:\.[0-9]{1,2})?)\s*(?:paid|debited|sent|spent)', caseSensitive: false),
     ];
 
@@ -110,7 +110,7 @@ class PaymentNotificationService {
   }
 
   String _guessCategory(String merchant, String fullText) {
-    final lower = '\ \'.toLowerCase();
+    final lower = '$merchant $fullText'.toLowerCase();
 
     if (lower.contains('swiggy') || lower.contains('zomato') || lower.contains('food') || lower.contains('restaurant') || lower.contains('tea') || lower.contains('cafe')) {
       return 'Food';
@@ -147,7 +147,7 @@ class PaymentNotificationService {
       'type': 'expense',
       'paymentMethod': paymentMethod,
       'date': Timestamp.now(),
-      'note': 'Auto-detected from \',
+      'note': 'Auto-detected from $paymentMethod',
       'createdAt': FieldValue.serverTimestamp(),
     });
   }
@@ -170,8 +170,8 @@ class PaymentNotificationService {
 
     await _localNotificationsPlugin.show(
       id: DateTime.now().millisecondsSinceEpoch ~/ 1000,
-      title: 'Auto Expense Added! ??',
-      body: '?\ for "\" via \ saved to expenses.',
+      title: 'Auto Expense Added! 💸',
+      body: '₹${amount.toStringAsFixed(2)} for "$merchant" via $paymentApp saved to expenses.',
       notificationDetails: details,
     );
   }
