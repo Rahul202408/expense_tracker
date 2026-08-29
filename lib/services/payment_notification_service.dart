@@ -17,7 +17,7 @@ class PaymentNotificationService {
     const initSettings = InitializationSettings(android: androidSettings);
 
     await _localNotificationsPlugin.initialize(
-      initSettings,
+      settings: initSettings,
       onDidReceiveNotificationResponse: (NotificationResponse response) {
         // Handled when user taps the auto-expense notification
       },
@@ -34,7 +34,6 @@ class PaymentNotificationService {
     await prefs.setBool(prefAutoDetectKey, enabled);
   }
 
-  /// Parses incoming notification title and text for payment details
   Future<void> processNotification({
     required String packageName,
     required String title,
@@ -43,7 +42,7 @@ class PaymentNotificationService {
     final isEnabled = await isAutoDetectEnabled();
     if (!isEnabled) return;
 
-    final fullContent = ' ';
+    final fullContent = '\ \';
     final amount = _extractAmount(fullContent);
 
     if (amount == null || amount <= 0) return;
@@ -68,7 +67,7 @@ class PaymentNotificationService {
 
   double? _extractAmount(String text) {
     final regexes = [
-      RegExp(r'(?:paid|sent|debited|spent|transferred|?|rs\.?|inr)\s*[\:?\s]*([0-9,]+(?:\.[0-9]{1,2})?)', caseSensitive: false),
+      RegExp(r'(?:paid|sent|debited|spent|transferred|?|rs|inr)\s*[\:?\s]*([0-9,]+(?:\.[0-9]{1,2})?)', caseSensitive: false),
       RegExp(r'([0-9,]+(?:\.[0-9]{1,2})?)\s*(?:paid|debited|sent|spent)', caseSensitive: false),
     ];
 
@@ -111,7 +110,7 @@ class PaymentNotificationService {
   }
 
   String _guessCategory(String merchant, String fullText) {
-    final lower = ' '.toLowerCase();
+    final lower = '\ \'.toLowerCase();
 
     if (lower.contains('swiggy') || lower.contains('zomato') || lower.contains('food') || lower.contains('restaurant') || lower.contains('tea') || lower.contains('cafe')) {
       return 'Food';
@@ -148,7 +147,7 @@ class PaymentNotificationService {
       'type': 'expense',
       'paymentMethod': paymentMethod,
       'date': Timestamp.now(),
-      'note': 'Auto-detected from ',
+      'note': 'Auto-detected from \',
       'createdAt': FieldValue.serverTimestamp(),
     });
   }
@@ -170,10 +169,10 @@ class PaymentNotificationService {
     const details = NotificationDetails(android: androidDetails);
 
     await _localNotificationsPlugin.show(
-      DateTime.now().millisecondsSinceEpoch ~/ 1000,
-      'Auto Expense Added! ??',
-      '? for "" via  saved to expenses.',
-      details,
+      id: DateTime.now().millisecondsSinceEpoch ~/ 1000,
+      title: 'Auto Expense Added! ??',
+      body: '?\ for "\" via \ saved to expenses.',
+      notificationDetails: details,
     );
   }
 }

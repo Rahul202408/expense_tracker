@@ -1,4 +1,3 @@
-import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -16,7 +15,7 @@ class NoInternetBannerWrapper extends StatelessWidget {
     return Stack(
       children: [
         child,
-        if (!connectivityProvider.isConnected)
+        if (connectivityProvider.isOffline)
           Positioned.fill(
             child: Material(
               color: Colors.black.withValues(alpha: 0.8),
@@ -70,8 +69,7 @@ class NoInternetBannerWrapper extends StatelessWidget {
                         const SizedBox(height: 32),
                         ElevatedButton.icon(
                           onPressed: () async {
-                            final results = await Connectivity().checkConnectivity();
-                            connectivityProvider.updateConnectivity(results);
+                            await connectivityProvider.retryConnection();
                           },
                           icon: const Icon(Icons.refresh_rounded, size: 20),
                           label: const Text(
