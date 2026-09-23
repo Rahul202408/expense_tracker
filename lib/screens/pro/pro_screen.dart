@@ -107,10 +107,16 @@ class _ProScreenState extends State<ProScreen> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      IconButton(
-                        onPressed: () => Navigator.pop(context),
-                        icon: const Icon(Icons.close_rounded, color: Colors.white70, size: 28),
-                        tooltip: "Close",
+                      Container(
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.12),
+                          shape: BoxShape.circle,
+                        ),
+                        child: IconButton(
+                          onPressed: () => Navigator.pop(context),
+                          icon: const Icon(Icons.close_rounded, color: Colors.white, size: 24),
+                          tooltip: "Close",
+                        ),
                       ),
                       TextButton.icon(
                         onPressed: () async {

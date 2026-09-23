@@ -18,6 +18,7 @@ import 'terms_conditions_screen.dart';
 import 'app_guide_screen.dart';
 import '../pro/pro_screen.dart';
 import '../../providers/pro_provider.dart';
+import '../../widgets/google_review_dialog.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -324,6 +325,24 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   surfaceColor: surfaceColor,
                   borderColor: cardBorderColor,
                   children: [
+                    _buildSettingRow(
+                      icon: Icons.star_rounded,
+                      iconColor: const Color(0xffFBBF24),
+                      title: "Rate on Google Play",
+                      subtitle: "Share your experience with 5 stars ⭐",
+                      trailing: Icon(
+                        Icons.chevron_right_rounded,
+                        color: subtitleTextColor.withValues(alpha: 0.5),
+                        size: 22,
+                      ),
+                      dividerColor: dividerColor,
+                      onTap: () {
+                        showDialog(
+                          context: context,
+                          builder: (_) => const GoogleReviewDialog(),
+                        );
+                      },
+                    ),
                     _buildSettingRow(
                       icon: Icons.menu_book_rounded,
                       iconColor: const Color(0xff6366F1),

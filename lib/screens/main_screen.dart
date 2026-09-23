@@ -6,6 +6,7 @@ import 'history/history_screen.dart';
 import 'profile/profile_screen.dart';
 import 'home/widgets/custom_bottom_nav.dart';
 import '../services/auth_service.dart';
+import '../services/app_prompt_service.dart';
 
 class MainScreen extends StatefulWidget {
   const MainScreen({super.key});
@@ -21,6 +22,17 @@ class _MainScreenState extends State<MainScreen> {
   void initState() {
     super.initState();
     AuthService().updateLastActiveTime();
+    _initLaunchPrompts();
+  }
+
+  void _initLaunchPrompts() async {
+    await AppPromptService().registerLaunch();
+    // Allow dashboard UI to render smoothly before checking and triggering contextual prompts
+    Future.delayed(const Duration(milliseconds: 1400), () {
+      if (mounted) {
+        AppPromptService().checkAndTriggerPrompts(context);
+      }
+    });
   }
 
   void _onTabSelect(int index) {
