@@ -1,0 +1,64 @@
+group = 'io.flutter.plugins.inapppurchase'
+version = '1.0-SNAPSHOT'
+
+buildscript {
+    repositories {
+        google()
+        mavenCentral()
+    }
+
+    dependencies {
+        classpath 'com.android.tools.build:gradle:8.7.3'
+        classpath 'org.jetbrains.kotlin:kotlin-gradle-plugin:2.1.0'
+    }
+}
+
+rootProject.allprojects {
+    repositories {
+        google()
+        mavenCentral()
+    }
+}
+
+apply plugin: 'com.android.library'
+apply plugin: 'kotlin-android'
+
+android {
+    buildFeatures {
+        buildConfig = true
+    }
+
+    namespace = "io.flutter.plugins.inapppurchase"
+
+    compileSdk = flutter.compileSdkVersion
+
+    defaultConfig {
+        minSdk = 21
+        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+    }
+
+    sourceSets {
+        main.java.srcDirs += 'src/main/kotlin'
+    }
+
+    lintOptions {
+        checkAllWarnings = true
+        warningsAsErrors = true
+        disable 'AndroidGradlePluginVersion', 'InvalidPackage', 'GradleDependency', 'NewerVersionAvailable'
+    }
+
+    compileOptions {
+        sourceCompatibility = JavaVersion.VERSION_11
+        targetCompatibility = JavaVersion.VERSION_11
+    }
+
+    kotlinOptions {
+        jvmTarget = '11'
+    }
+}
+
+dependencies {
+    implementation("androidx.annotation:annotation:1.9.1")
+    implementation("com.android.billingclient:billing:8.3.0")
+    implementation("org.jetbrains.kotlin:kotlin-stdlib-jdk8:2.1.0")
+}

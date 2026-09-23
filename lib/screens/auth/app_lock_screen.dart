@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import '../../services/security_service.dart';
+import '../../services/auth_service.dart';
 import '../../widgets/three_d_tilt_card.dart';
 import '../main_screen.dart';
+import '../splash/splash_screen.dart';
 
 class AppLockScreen extends StatefulWidget {
   final VoidCallback? onSuccess;
@@ -140,6 +142,24 @@ class _AppLockScreenState extends State<AppLockScreen>
 
     return Scaffold(
       backgroundColor: bgColor,
+      appBar: widget.onSuccess != null
+          ? AppBar(
+              backgroundColor: Colors.transparent,
+              elevation: 0,
+              leading: IconButton(
+                icon: Icon(Icons.arrow_back_rounded, color: textColor),
+                onPressed: () => Navigator.pop(context),
+              ),
+              title: Text(
+                "Test Lock Mode",
+                style: TextStyle(
+                  color: textColor,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            )
+          : null,
       body: SafeArea(
         child: Column(
           children: [
@@ -351,13 +371,113 @@ class _AppLockScreenState extends State<AppLockScreen>
                       ),
                     ],
                   ),
-                  const SizedBox(height: 10),
+                  const SizedBox(height: 6),
+                  TextButton.icon(
+                    onPressed: _showForgotPinDialog,
+                    icon: Icon(
+                      Icons.help_outline_rounded,
+                      size: 15,
+                      color: isDark ? Colors.grey.shade400 : Colors.grey.shade600,
+                    ),
+                    label: Text(
+                      "Forgot PIN? Log Out",
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: isDark ? Colors.grey.shade400 : Colors.grey.shade600,
+                      ),
+                    ),
+                  ),
                 ],
               ),
             ),
           ],
         ),
       ),
+    );
+  }
+
+  void _showForgotPinDialog() {
+    showDialog(
+      context: context,
+      builder: (ctx) {
+        final isDark = Theme.of(ctx).brightness == Brightness.dark;
+        return AlertDialog(
+          backgroundColor: isDark ? const Color(0xff1E293B) : Colors.white,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+          title: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: const Color(0xffEF4444).withValues(alpha: 0.15),
+                ),
+                child: const Icon(
+                  Icons.lock_reset_rounded,
+                  color: Color(0xffEF4444),
+                  size: 22,
+                ),
+              ),
+              const SizedBox(width: 10),
+              Text(
+                "Forgot Security PIN?",
+                style: TextStyle(
+                  fontWeight: FontWeight.w800,
+                  fontSize: 17,
+                  color: isDark ? Colors.white : const Color(0xff1E293B),
+                ),
+              ),
+            ],
+          ),
+          content: Text(
+            "To reset your PIN, you can log out and log back in using your email or Google account.",
+            style: TextStyle(
+              fontSize: 13,
+              height: 1.4,
+              color: isDark ? Colors.grey.shade300 : const Color(0xff475569),
+            ),
+          ),
+          actionsPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: Text(
+                "Cancel",
+                style: TextStyle(
+                  color: isDark ? Colors.grey.shade400 : Colors.grey.shade600,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xffEF4444),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                elevation: 0,
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+              ),
+              onPressed: () async {
+                Navigator.pop(ctx);
+                await AuthService().logout();
+                if (!mounted) return;
+                Navigator.pushAndRemoveUntil(
+                  context,
+                  MaterialPageRoute(builder: (_) => const SplashScreen()),
+                  (route) => false,
+                );
+              },
+              child: const Text(
+                "Log Out & Reset",
+                style: TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+          ],
+        );
+      },
     );
   }
 

@@ -1,7 +1,13 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 import '../../models/transaction_model.dart';
 import '../../services/transaction_service.dart';
+import '../../services/export_service.dart';
+import '../../providers/pro_provider.dart';
+import '../../providers/currency_provider.dart';
+import '../pro/pro_screen.dart';
 import '../home/widgets/transaction_tile.dart';
 import '../../widgets/three_d_tilt_card.dart';
 import '../transaction/add_transaction_screen.dart';
@@ -25,6 +31,170 @@ class _HistoryScreenState extends State<HistoryScreen> {
   String selectedDateFilter = "All";
   TypeFilter selectedTypeFilter = TypeFilter.all;
   SortOption selectedSortOption = SortOption.newest;
+  List<TransactionModel> _currentFilteredList = [];
+
+  void _handleExport(BuildContext context, bool isDark) {
+    if (_currentFilteredList.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("No transactions available to export.")),
+      );
+      return;
+    }
+
+    final proProvider = Provider.of<ProProvider>(context, listen: false);
+    if (!proProvider.isPro) {
+      _showExportPaywall(context);
+    } else {
+      _showExportOptions(context, isDark);
+    }
+  }
+
+  void _showExportPaywall(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (ctx) {
+        return AlertDialog(
+          backgroundColor: const Color(0xff0F172A),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+            side: const BorderSide(color: Color(0xffF59E0B), width: 1.2),
+          ),
+          title: const Row(
+            children: [
+              Icon(Icons.workspace_premium_rounded, color: Color(0xffF59E0B), size: 28),
+              SizedBox(width: 8),
+              Text(
+                "PRO Feature",
+                style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 18),
+              ),
+            ],
+          ),
+          content: const Text(
+            "Exporting PDF Statements and Excel (CSV) reports is an exclusive Expense Tracker PRO feature.\n\nUpgrade to PRO for zero ads, unlimited exports, and custom categories!",
+            style: TextStyle(color: Colors.white70, fontSize: 13, height: 1.4),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text("Cancel", style: TextStyle(color: Colors.grey)),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                Navigator.pop(ctx);
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const ProScreen()),
+                );
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xffF59E0B),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+              child: const Text(
+                "Unlock PRO 👑",
+                style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _showExportOptions(BuildContext context, bool isDark) {
+    final currencySymbol = Provider.of<CurrencyProvider>(context, listen: false).symbol;
+    final userEmail = FirebaseAuth.instance.currentUser?.email;
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: isDark ? const Color(0xff1E293B) : Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (ctx) {
+        return Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    "Export Transactions 📄",
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: isDark ? Colors.white : const Color(0xff1A202C),
+                    ),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.close),
+                    onPressed: () => Navigator.pop(ctx),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              ListTile(
+                leading: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.red.withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Icon(Icons.picture_as_pdf_rounded, color: Colors.red),
+                ),
+                title: Text(
+                  "Export as PDF Statement",
+                  style: TextStyle(
+                    fontWeight: FontWeight.w700,
+                    color: isDark ? Colors.white : const Color(0xff1A202C),
+                  ),
+                ),
+                subtitle: const Text("Beautiful tabular statement with income/expense breakdown"),
+                onTap: () async {
+                  Navigator.pop(ctx);
+                  await ExportService().exportToPdf(
+                    transactions: _currentFilteredList,
+                    currencySymbol: currencySymbol,
+                    userEmail: userEmail,
+                  );
+                },
+              ),
+              const SizedBox(height: 8),
+              ListTile(
+                leading: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.green.withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Icon(Icons.table_chart_rounded, color: Colors.green),
+                ),
+                title: Text(
+                  "Export as Excel (CSV)",
+                  style: TextStyle(
+                    fontWeight: FontWeight.w700,
+                    color: isDark ? Colors.white : const Color(0xff1A202C),
+                  ),
+                ),
+                subtitle: const Text("Raw spreadsheet data compatible with Excel & Google Sheets"),
+                onTap: () async {
+                  Navigator.pop(ctx);
+                  await ExportService().exportToCsv(
+                    transactions: _currentFilteredList,
+                    currencySymbol: currencySymbol,
+                  );
+                },
+              ),
+              const SizedBox(height: 16),
+            ],
+          ),
+        );
+      },
+    );
+  }
 
   final List<String> dateFilters = ["All", "Today", "This Week", "This Month"];
   final List<String> categories = [
@@ -169,6 +339,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final currencySymbol = Provider.of<CurrencyProvider>(context).symbol;
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final textColor = isDark ? Colors.white : const Color(0xff1A202C);
     final cardBgColor = isDark ? const Color(0xff1E293B) : Colors.white;
@@ -192,6 +363,14 @@ class _HistoryScreenState extends State<HistoryScreen> {
         backgroundColor: Colors.transparent,
         elevation: 0,
         actions: [
+          IconButton(
+            icon: Icon(
+              Icons.file_download_outlined,
+              color: isDark ? const Color(0xff38EF7D) : const Color(0xff1E3C72),
+            ),
+            onPressed: () => _handleExport(context, isDark),
+            tooltip: "Export PDF / CSV",
+          ),
           IconButton(
             icon: Icon(
               Icons.swap_vert_rounded,
@@ -269,6 +448,8 @@ class _HistoryScreenState extends State<HistoryScreen> {
                       return a.amount.compareTo(b.amount);
                   }
                 });
+
+                _currentFilteredList = filteredTransactions;
 
                 // Calculate Totals for Summary Banner
                 double totalIncome = 0;
@@ -434,7 +615,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
                                           ),
                                           const SizedBox(height: 12),
                                           Text(
-                                            "₹${netBalance.toStringAsFixed(2)}",
+                                            "$currencySymbol${netBalance.toStringAsFixed(2)}",
                                             style: const TextStyle(
                                               color: Colors.white,
                                               fontSize: 28,
@@ -470,7 +651,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
                                                 Expanded(
                                                   child: _buildSummaryMetric(
                                                     "Income",
-                                                    "+ ₹${totalIncome.toStringAsFixed(2)}",
+                                                    "+ $currencySymbol${totalIncome.toStringAsFixed(2)}",
                                                     const Color(0xff00E676),
                                                     Icons.arrow_downward_rounded,
                                                   ),
@@ -483,7 +664,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
                                                 Expanded(
                                                   child: _buildSummaryMetric(
                                                     "Expenses",
-                                                    "- ₹${totalExpense.toStringAsFixed(2)}",
+                                                    "- $currencySymbol${totalExpense.toStringAsFixed(2)}",
                                                     const Color(0xffFF5252),
                                                     Icons.arrow_upward_rounded,
                                                   ),

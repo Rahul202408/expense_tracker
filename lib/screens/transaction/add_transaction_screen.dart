@@ -1,7 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../../models/transaction_model.dart';
 import '../../services/transaction_service.dart';
 import '../../widgets/three_d_tilt_card.dart';
+import '../../providers/pro_provider.dart';
+import '../../providers/currency_provider.dart';
+import '../../services/firebase_analytics_service.dart';
+import '../pro/pro_screen.dart';
 
 class AddTransactionScreen extends StatefulWidget {
   final TransactionModel? transaction;
@@ -106,6 +111,12 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
         await _transactionService.updateTransaction(updatedTransaction);
       }
 
+      FirebaseAnalyticsService().logAddTransaction(
+        category: selectedCategory,
+        amount: amount,
+        isExpense: isExpense,
+      );
+
       if (!mounted) return;
 
       ScaffoldMessenger.of(context).showSnackBar(
@@ -127,6 +138,7 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final currencySymbol = Provider.of<CurrencyProvider>(context).symbol;
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final cardBgColor = isDark ? const Color(0xff1E293B) : Colors.white;
     final inputTextColor = isDark ? Colors.white : const Color(0xff2D3748);
@@ -344,9 +356,19 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
                       fontWeight: FontWeight.normal,
                       fontSize: 18,
                     ),
-                    prefixIcon: Icon(
-                      Icons.currency_rupee_rounded,
-                      color: isDark ? const Color(0xff38EF7D) : const Color(0xff1E3C72),
+                    prefixIcon: Padding(
+                      padding: const EdgeInsets.only(left: 14, right: 8),
+                      child: Center(
+                        widthFactor: 1.0,
+                        child: Text(
+                          currencySymbol,
+                          style: TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.w900,
+                            color: isDark ? const Color(0xff38EF7D) : const Color(0xff1E3C72),
+                          ),
+                        ),
+                      ),
                     ),
                     filled: false,
                     border: InputBorder.none,
@@ -384,63 +406,101 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
               Wrap(
                 spacing: 10,
                 runSpacing: 10,
-                children: categoryIcons.entries.map((entry) {
-                  final catName = entry.key;
-                  final catIcon = entry.value;
-                  final isSelected = selectedCategory == catName;
+                children: [
+                  ...categoryIcons.entries.map((entry) {
+                    final catName = entry.key;
+                    final catIcon = entry.value;
+                    final isSelected = selectedCategory == catName;
 
-                  return GestureDetector(
-                    onTap: () {
-                      setState(() {
-                        selectedCategory = catName;
-                      });
-                    },
-                    child: AnimatedContainer(
-                      duration: const Duration(milliseconds: 200),
+                    return GestureDetector(
+                      onTap: () {
+                        setState(() {
+                          selectedCategory = catName;
+                        });
+                      },
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 200),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 14,
+                          vertical: 10,
+                        ),
+                        decoration: BoxDecoration(
+                          gradient: isSelected
+                              ? const LinearGradient(
+                                  colors: [Color(0xff1E3C72), Color(0xff2A5298)],
+                                )
+                              : null,
+                          color: isSelected ? null : cardBgColor,
+                          borderRadius: BorderRadius.circular(18),
+                          border: Border.all(
+                            color: isSelected
+                                ? Colors.transparent
+                                : (isDark ? Colors.white.withValues(alpha: 0.15) : Colors.grey.shade300),
+                          ),
+                          boxShadow: isSelected
+                              ? [
+                                  BoxShadow(
+                                    color: const Color(0xff1E3C72).withValues(alpha: 0.3),
+                                    blurRadius: 10,
+                                    offset: const Offset(0, 4),
+                                  ),
+                                ]
+                              : [],
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              catIcon,
+                              size: 18,
+                              color: isSelected
+                                  ? Colors.amberAccent
+                                  : (isDark ? const Color(0xff38EF7D) : const Color(0xff1E3C72)),
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              catName,
+                              style: TextStyle(
+                                color: isSelected
+                                    ? Colors.white
+                                    : (isDark ? Colors.grey.shade300 : const Color(0xff2D3748)),
+                                fontWeight: FontWeight.w700,
+                                fontSize: 13,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  }),
+                  GestureDetector(
+                    onTap: () => _showAddCustomCategoryDialog(context, isDark),
+                    child: Container(
                       padding: const EdgeInsets.symmetric(
                         horizontal: 14,
                         vertical: 10,
                       ),
                       decoration: BoxDecoration(
-                        gradient: isSelected
-                            ? const LinearGradient(
-                                colors: [Color(0xff1E3C72), Color(0xff2A5298)],
-                              )
-                            : null,
-                        color: isSelected ? null : cardBgColor,
+                        color: cardBgColor,
                         borderRadius: BorderRadius.circular(18),
                         border: Border.all(
-                          color: isSelected
-                              ? Colors.transparent
-                              : (isDark ? Colors.white.withValues(alpha: 0.15) : Colors.grey.shade300),
+                          color: const Color(0xffF59E0B).withValues(alpha: 0.6),
+                          width: 1,
                         ),
-                        boxShadow: isSelected
-                            ? [
-                                BoxShadow(
-                                  color: const Color(0xff1E3C72).withValues(alpha: 0.3),
-                                  blurRadius: 10,
-                                  offset: const Offset(0, 4),
-                                ),
-                              ]
-                            : [],
                       ),
-                      child: Row(
+                      child: const Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           Icon(
-                            catIcon,
+                            Icons.add_circle_outline_rounded,
                             size: 18,
-                            color: isSelected
-                                ? Colors.amberAccent
-                                : (isDark ? const Color(0xff38EF7D) : const Color(0xff1E3C72)),
+                            color: Color(0xffF59E0B),
                           ),
-                          const SizedBox(width: 8),
+                          SizedBox(width: 8),
                           Text(
-                            catName,
+                            "Add New",
                             style: TextStyle(
-                              color: isSelected
-                                  ? Colors.white
-                                  : (isDark ? Colors.grey.shade300 : const Color(0xff2D3748)),
+                              color: Color(0xffF59E0B),
                               fontWeight: FontWeight.w700,
                               fontSize: 13,
                             ),
@@ -448,8 +508,8 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
                         ],
                       ),
                     ),
-                  );
-                }).toList(),
+                  ),
+                ],
               ),
 
               const SizedBox(height: 20),
@@ -615,6 +675,150 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
           ],
         ),
       ),
+    );
+  }
+
+  void _showAddCustomCategoryDialog(BuildContext context, bool isDark) {
+    final proProvider = Provider.of<ProProvider>(context, listen: false);
+    if (!proProvider.isPro) {
+      showDialog(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          backgroundColor: const Color(0xff0F172A),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+            side: const BorderSide(color: Color(0xffF59E0B), width: 1.2),
+          ),
+          title: const Row(
+            children: [
+              Icon(Icons.workspace_premium_rounded, color: Color(0xffF59E0B), size: 28),
+              SizedBox(width: 8),
+              Text(
+                "PRO Feature",
+                style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 18),
+              ),
+            ],
+          ),
+          content: const Text(
+            "Custom categories are only available for PRO members.\n\nUpgrade now to create unlimited custom categories, remove all ads, and export reports!",
+            style: TextStyle(color: Colors.white70, fontSize: 13, height: 1.4),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text("Cancel", style: TextStyle(color: Colors.grey)),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                Navigator.pop(ctx);
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const ProScreen()),
+                );
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xffF59E0B),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+              child: const Text(
+                "Upgrade to PRO 👑",
+                style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold),
+              ),
+            ),
+          ],
+        ),
+      );
+      return;
+    }
+
+    final nameController = TextEditingController();
+    IconData selectedIcon = Icons.star_rounded;
+
+    final availableIcons = [
+      Icons.star_rounded,
+      Icons.fitness_center_rounded,
+      Icons.pets_rounded,
+      Icons.savings_rounded,
+      Icons.car_rental_rounded,
+      Icons.card_giftcard_rounded,
+      Icons.work_rounded,
+      Icons.child_care_rounded,
+      Icons.coffee_rounded,
+    ];
+
+    showDialog(
+      context: context,
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              backgroundColor: isDark ? const Color(0xff1E293B) : Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+              title: Text(
+                "New Custom Category 🏷️",
+                style: TextStyle(
+                  fontWeight: FontWeight.w800,
+                  color: isDark ? Colors.white : const Color(0xff1A202C),
+                ),
+              ),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  TextField(
+                    controller: nameController,
+                    decoration: InputDecoration(
+                      hintText: "Category Name (e.g. Gym, EMI)",
+                      filled: true,
+                      fillColor: isDark ? const Color(0xff0F172A) : Colors.grey.shade100,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide.none,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  const Text("Select Icon:", style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
+                  const SizedBox(height: 8),
+                  Wrap(
+                    spacing: 8,
+                    children: availableIcons.map((ic) {
+                      final isChosen = selectedIcon == ic;
+                      return GestureDetector(
+                        onTap: () => setDialogState(() => selectedIcon = ic),
+                        child: Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: isChosen ? const Color(0xff1E3C72) : Colors.grey.withValues(alpha: 0.15),
+                          ),
+                          child: Icon(ic, color: isChosen ? Colors.amber : Colors.grey, size: 20),
+                        ),
+                      );
+                    }).toList(),
+                  ),
+                ],
+              ),
+              actions: [
+                TextButton(onPressed: () => Navigator.pop(ctx), child: const Text("Cancel")),
+                ElevatedButton(
+                  onPressed: () {
+                    final name = nameController.text.trim();
+                    if (name.isNotEmpty) {
+                      setState(() {
+                        categoryIcons[name] = selectedIcon;
+                        selectedCategory = name;
+                      });
+                      Navigator.pop(ctx);
+                    }
+                  },
+                  child: const Text("Add Category"),
+                ),
+              ],
+            );
+          },
+        );
+      },
     );
   }
 }

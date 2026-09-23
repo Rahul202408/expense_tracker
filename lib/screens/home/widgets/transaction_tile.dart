@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import '../../../providers/currency_provider.dart';
 import '../../../widgets/three_d_tilt_card.dart';
 
 class TransactionTile extends StatelessWidget {
@@ -10,6 +12,7 @@ class TransactionTile extends StatelessWidget {
   final bool isExpense;
   final DateTime? date;
   final VoidCallback? onTap;
+  final String? currencySymbol;
 
   const TransactionTile({
     super.key,
@@ -21,6 +24,7 @@ class TransactionTile extends StatelessWidget {
     required this.isExpense,
     this.date,
     this.onTap,
+    this.currencySymbol,
   });
 
   String _formatDate(DateTime? d) {
@@ -52,6 +56,7 @@ class TransactionTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final symbol = currencySymbol ?? Provider.of<CurrencyProvider>(context).symbol;
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final cardBgColor = isDark ? const Color(0xff1E293B) : Colors.white;
     final titleTextColor = isDark ? Colors.white : const Color(0xff2D3748);
@@ -168,7 +173,7 @@ class TransactionTile extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
                 Text(
-                  isExpense ? "- ₹$amount" : "+ ₹$amount",
+                  isExpense ? "- $symbol$amount" : "+ $symbol$amount",
                   style: TextStyle(
                     color: isExpense
                         ? const Color(0xffFF5252)

@@ -4,8 +4,13 @@ import '../../../../widgets/three_d_tilt_card.dart';
 
 class ExpensePieChart extends StatefulWidget {
   final Map<String, double> categoryData;
+  final String? currencySymbol;
 
-  const ExpensePieChart({super.key, required this.categoryData});
+  const ExpensePieChart({
+    super.key,
+    required this.categoryData,
+    this.currencySymbol,
+  });
 
   @override
   State<ExpensePieChart> createState() => _ExpensePieChartState();
@@ -30,6 +35,7 @@ class _ExpensePieChartState extends State<ExpensePieChart> {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final symbol = widget.currencySymbol ?? "₹";
 
     if (widget.categoryData.isEmpty) {
       return Container(
@@ -53,14 +59,14 @@ class _ExpensePieChartState extends State<ExpensePieChart> {
     );
 
     String centerLabel = "Total Expense";
-    String centerValue = "₹${totalSum.toStringAsFixed(0)}";
+    String centerValue = "$symbol${totalSum.toStringAsFixed(0)}";
     String centerSubText = "${entries.length} Categories";
 
     if (touchedIndex >= 0 && touchedIndex < entries.length) {
       final touchedEntry = entries[touchedIndex];
       final pct = totalSum > 0 ? (touchedEntry.value / totalSum * 100) : 0.0;
       centerLabel = touchedEntry.key;
-      centerValue = "₹${touchedEntry.value.toStringAsFixed(0)}";
+      centerValue = "$symbol${touchedEntry.value.toStringAsFixed(0)}";
       centerSubText = "${pct.toStringAsFixed(1)}%";
     }
 

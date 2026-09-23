@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
 import 'widgets/balance_card.dart';
 import 'widgets/home_header.dart';
@@ -6,6 +7,8 @@ import 'widgets/quick_actions_bar.dart';
 import 'widgets/budget_progress_card.dart';
 import 'widgets/transaction_tile.dart';
 import '../profile/profile_screen.dart';
+import '../pro/pro_screen.dart';
+import '../../providers/pro_provider.dart';
 
 import '../../models/transaction_model.dart';
 import '../../services/transaction_service.dart';
@@ -98,6 +101,16 @@ class _HomeScreenState extends State<HomeScreen> {
                       // Quick Action Shortcuts Bar
                       QuickActionsBar(onNavigateTab: widget.onNavigateTab),
 
+                      const SizedBox(height: 10),
+
+                      // Pro Banner (shown only for free users)
+                      Consumer<ProProvider>(
+                        builder: (context, pro, _) {
+                          if (pro.isPro) return const SizedBox.shrink();
+                          return _buildProBanner(context);
+                        },
+                      ),
+
                       const SizedBox(height: 12),
 
                       // Budget Health Liquid Meter
@@ -108,7 +121,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
                       const SizedBox(height: 8),
 
-                      // AdMob Banner Ad
+                      // AdMob Banner Ad (automatically hidden when Pro)
                       const BannerAdWidget(),
 
                       const SizedBox(height: 14),
@@ -229,5 +242,97 @@ class _HomeScreenState extends State<HomeScreen> {
       default:
         return Icons.category_rounded;
     }
+  }
+
+  Widget _buildProBanner(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
+      child: GestureDetector(
+        onTap: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const ProScreen()),
+          );
+        },
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          decoration: BoxDecoration(
+            gradient: const LinearGradient(
+              colors: [Color(0xff1E293B), Color(0xff0F172A)],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: const Color(0xffF59E0B).withValues(alpha: 0.5),
+              width: 1.2,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: const Color(0xffF59E0B).withValues(alpha: 0.1),
+                blurRadius: 10,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    colors: [Color(0xffFBBF24), Color(0xffD97706)],
+                  ),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Icon(Icons.workspace_premium_rounded, color: Colors.white, size: 24),
+              ),
+              const SizedBox(width: 12),
+              const Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      "Upgrade to PRO 👑",
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w800,
+                        fontSize: 14,
+                      ),
+                    ),
+                    SizedBox(height: 2),
+                    Text(
+                      "Remove Ads & Unlock PDF Statement",
+                      style: TextStyle(
+                        color: Color(0xff94A3B8),
+                        fontSize: 11,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    colors: [Color(0xffF59E0B), Color(0xffD97706)],
+                  ),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: const Text(
+                  "UPGRADE",
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w900,
+                    fontSize: 11,
+                    letterSpacing: 0.5,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 }

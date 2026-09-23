@@ -2,7 +2,7 @@ name: expense_tracker
 description: "A new Flutter project."
 publish_to: "none"
 
-version: 1.1.4+14
+version: 1.2.2+22
 
 environment:
   sdk: ^3.8.1
@@ -30,6 +30,16 @@ dependencies:
   timezone: ^0.10.0
   flutter_timezone: ^3.0.1
   google_mobile_ads: ^5.3.0
+  in_app_purchase: ^3.2.0
+  in_app_purchase_android:
+    path: packages/in_app_purchase_android
+  pdf: ^3.11.1
+  printing: ^5.13.3
+  csv: ^6.0.0
+  share_plus: ^10.1.4
+  path_provider: ^2.1.5
+  intl: ^0.20.2
+  firebase_analytics: ^11.6.0
 
 dev_dependencies:
 
@@ -39,6 +49,10 @@ dev_dependencies:
   flutter_lints: ^5.0.0
   flutter_launcher_icons: ^0.14.4
   flutter_native_splash: ^2.4.6
+
+dependency_overrides:
+  in_app_purchase_android:
+    path: packages/in_app_purchase_android
 
 flutter:
   uses-material-design: true

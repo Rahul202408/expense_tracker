@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
 import '../../models/transaction_model.dart';
 import '../../services/dashboard_service.dart';
 import '../../services/transaction_service.dart';
+import '../../providers/currency_provider.dart';
 
 import '../../services/analytics_service.dart';
 import 'widgets/expense_pie_chart.dart';
@@ -14,6 +16,7 @@ class AnalyticsScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final currencySymbol = Provider.of<CurrencyProvider>(context).symbol;
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final transactionService = TransactionService();
     final dashboardService = DashboardService();
@@ -52,21 +55,21 @@ class AnalyticsScreen extends StatelessWidget {
               children: [
                 AnalyticsCard(
                   title: "Total Income",
-                  amount: "₹ ${income.toStringAsFixed(2)}",
+                  amount: "$currencySymbol ${income.toStringAsFixed(2)}",
                   icon: Icons.arrow_downward,
                   color: Colors.green,
                 ),
 
                 AnalyticsCard(
                   title: "Total Expense",
-                  amount: "₹ ${expense.toStringAsFixed(2)}",
+                  amount: "$currencySymbol ${expense.toStringAsFixed(2)}",
                   icon: Icons.arrow_upward,
                   color: Colors.red,
                 ),
 
                 AnalyticsCard(
                   title: "Savings",
-                  amount: "₹ ${balance.toStringAsFixed(2)}",
+                  amount: "$currencySymbol ${balance.toStringAsFixed(2)}",
                   icon: Icons.account_balance_wallet,
                   color: Colors.blue,
                 ),
@@ -81,7 +84,10 @@ class AnalyticsScreen extends StatelessWidget {
                     color: isDark ? Colors.white : const Color(0xff1A202C),
                   ),
                 ),
-                ExpensePieChart(categoryData: categoryData),
+                ExpensePieChart(
+                  categoryData: categoryData,
+                  currencySymbol: currencySymbol,
+                ),
 
                 const SizedBox(height: 20),
 
@@ -123,7 +129,7 @@ class AnalyticsScreen extends StatelessWidget {
                         ),
                       ),
                       trailing: Text(
-                        "₹ ${item.value.toStringAsFixed(2)}",
+                        "$currencySymbol ${item.value.toStringAsFixed(2)}",
                         style: TextStyle(
                           fontWeight: FontWeight.bold,
                           color: isDark ? const Color(0xff38EF7D) : const Color(0xff1E3C72),

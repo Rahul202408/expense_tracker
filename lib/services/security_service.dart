@@ -14,9 +14,15 @@ class SecurityService {
   static const String _keySecurityPin = "security_app_pin";
   static const String _keyBiometric = "security_biometric_enabled";
 
-  /// Check if App Lock is enabled
+  static const String _prefIsProKey = "is_pro_user";
+
+  /// Check if App Lock is enabled (Strictly gated to PRO users with valid 4-digit PIN)
   Future<bool> isAppLockEnabled() async {
     final prefs = await SharedPreferences.getInstance();
+    final bool isPro = prefs.getBool(_prefIsProKey) ?? false;
+    if (!isPro) return false;
+    final pin = prefs.getString(_keySecurityPin);
+    if (pin == null || pin.length != 4) return false;
     return prefs.getBool(_keyAppLock) ?? false;
   }
 

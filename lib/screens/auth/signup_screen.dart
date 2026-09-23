@@ -1,3 +1,4 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -11,6 +12,7 @@ import '../../services/auth_service.dart';
 import '../../services/currency_service.dart';
 import '../../utils/security_validator.dart';
 import '../profile/terms_conditions_screen.dart';
+import '../main_screen.dart';
 
 class SignupScreen extends StatefulWidget {
   const SignupScreen({super.key});
@@ -33,6 +35,52 @@ class _SignupScreenState extends State<SignupScreen> {
 
   bool agree = false;
   bool isLoading = false;
+  bool isGoogleLoading = false;
+
+  Future<void> handleGoogleSignIn() async {
+    setState(() => isGoogleLoading = true);
+
+    try {
+      final result = await _authService.googleSignIn();
+
+      if (!mounted) return;
+
+      if (result == null) {
+        final user = FirebaseAuth.instance.currentUser;
+        if (user != null) {
+          await _authService.recordUserLoginSession(user);
+        }
+
+        if (!mounted) return;
+        Navigator.pushAndRemoveUntil(
+          context,
+          MaterialPageRoute(builder: (_) => const MainScreen()),
+          (route) => false,
+        );
+      } else if (result != "Google Sign-In Cancelled") {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(result),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 4),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text("Google Sign-In Error: $e"),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => isGoogleLoading = false);
+      }
+    }
+  }
 
   @override
   void initState() {
@@ -353,12 +401,101 @@ class _SignupScreenState extends State<SignupScreen> {
                           isLoading: isLoading,
                           onPressed: signup,
                         ),
+
+                        const SizedBox(height: 18),
+
+                        // OR Divider
+                        Row(
+                          children: [
+                            Expanded(
+                              child: Divider(
+                                color: isDark ? Colors.white12 : Colors.grey.shade300,
+                                thickness: 1,
+                              ),
+                            ),
+                            Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 12),
+                              child: Text(
+                                "OR",
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w700,
+                                  color: isDark ? Colors.grey.shade400 : Colors.grey.shade500,
+                                ),
+                              ),
+                            ),
+                            Expanded(
+                              child: Divider(
+                                color: isDark ? Colors.white12 : Colors.grey.shade300,
+                                thickness: 1,
+                              ),
+                            ),
+                          ],
+                        ),
+
+                        const SizedBox(height: 18),
+
+                        // Continue with Google Button
+                        SizedBox(
+                          width: double.infinity,
+                          height: 52,
+                          child: OutlinedButton(
+                            onPressed: (isLoading || isGoogleLoading) ? null : handleGoogleSignIn,
+                            style: OutlinedButton.styleFrom(
+                              backgroundColor: isDark ? const Color(0xff162032) : Colors.white,
+                              side: BorderSide(
+                                color: isDark
+                                    ? Colors.white.withValues(alpha: 0.15)
+                                    : Colors.grey.shade300,
+                                width: 1.2,
+                              ),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(16),
+                              ),
+                              elevation: isDark ? 0 : 1,
+                              shadowColor: Colors.black.withValues(alpha: 0.05),
+                            ),
+                            child: isGoogleLoading
+                                ? const SizedBox(
+                                    width: 22,
+                                    height: 22,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2.5,
+                                      color: Color(0xff11998E),
+                                    ),
+                                  )
+                                : Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Image.asset(
+                                        'assets/images/google.png',
+                                        height: 22,
+                                        width: 22,
+                                        errorBuilder: (_, __, ___) =>
+                                            const Icon(Icons.g_mobiledata, size: 28),
+                                      ),
+                                      const SizedBox(width: 12),
+                                      Text(
+                                        "Continue with Google",
+                                        style: TextStyle(
+                                          fontSize: 15,
+                                          fontWeight: FontWeight.w700,
+                                          color: isDark
+                                              ? Colors.white
+                                              : const Color(0xff1E293B),
+                                          letterSpacing: 0.2,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                          ),
+                        ),
                       ],
                     ),
                   ),
                 ),
               ),
-              const SizedBox(height: 24),
+              const SizedBox(height: 20),
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [

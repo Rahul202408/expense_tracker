@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
+import 'package:provider/provider.dart';
 import '../services/ad_service.dart';
+import '../providers/pro_provider.dart';
 
 class NativeAdWidget extends StatefulWidget {
   final TemplateType templateType;
@@ -23,7 +25,12 @@ class _NativeAdWidgetState extends State<NativeAdWidget> {
   @override
   void initState() {
     super.initState();
-    _loadNativeAd();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final isPro = Provider.of<ProProvider>(context, listen: false).isPro;
+      if (!isPro) {
+        _loadNativeAd();
+      }
+    });
   }
 
   void _loadNativeAd() {
@@ -92,7 +99,8 @@ class _NativeAdWidgetState extends State<NativeAdWidget> {
 
   @override
   Widget build(BuildContext context) {
-    if (!_isAdLoaded || _nativeAd == null) {
+    final proProvider = Provider.of<ProProvider>(context);
+    if (proProvider.isPro || !_isAdLoaded || _nativeAd == null) {
       return const SizedBox.shrink();
     }
 

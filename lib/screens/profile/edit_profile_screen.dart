@@ -72,7 +72,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                     phone: phoneController.text.trim(),
                   );
 
-                  if (!mounted) return;
+                  if (!context.mounted) return;
 
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(

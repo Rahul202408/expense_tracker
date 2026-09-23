@@ -5,6 +5,7 @@ import 'analytics/analytics_screen.dart';
 import 'history/history_screen.dart';
 import 'profile/profile_screen.dart';
 import 'home/widgets/custom_bottom_nav.dart';
+import '../services/auth_service.dart';
 
 class MainScreen extends StatefulWidget {
   const MainScreen({super.key});
@@ -15,6 +16,12 @@ class MainScreen extends StatefulWidget {
 
 class _MainScreenState extends State<MainScreen> {
   int currentIndex = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    AuthService().updateLastActiveTime();
+  }
 
   void _onTabSelect(int index) {
     setState(() {

@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'ad_service.dart';
 
+import 'in_app_purchase_service.dart';
+
 class AppOpenAdManager with WidgetsBindingObserver {
   static final AppOpenAdManager _instance = AppOpenAdManager._internal();
   factory AppOpenAdManager() => _instance;
@@ -11,19 +13,32 @@ class AppOpenAdManager with WidgetsBindingObserver {
   AppOpenAd? _appOpenAd;
   bool _isShowingAd = false;
   DateTime? _appOpenLoadTime;
+  bool _isProUser = false;
 
   /// Maximum duration allowed for an App Open Ad before it's considered expired (4 hours)
   static const Duration maxCacheDuration = Duration(hours: 4);
 
   /// Initialize observer and load initial ad
-  void initialize() {
+  void initialize() async {
     WidgetsBinding.instance.addObserver(this);
-    loadAd();
+    _isProUser = await InAppPurchaseService().getIsPro();
+    if (!_isProUser) {
+      loadAd();
+    }
+  }
+
+  void updateProStatus(bool isPro) {
+    _isProUser = isPro;
+    if (isPro && _appOpenAd != null) {
+      _appOpenAd?.dispose();
+      _appOpenAd = null;
+    }
   }
 
   /// Load an AppOpenAd
-  void loadAd() {
-    if (isAdAvailable) return;
+  void loadAd() async {
+    _isProUser = await InAppPurchaseService().getIsPro();
+    if (_isProUser || isAdAvailable) return;
 
     AppOpenAd.load(
       adUnitId: AdService.appOpenAdUnitId,
@@ -48,12 +63,15 @@ class AppOpenAdManager with WidgetsBindingObserver {
 
   /// Check if ad is available and not expired
   bool get isAdAvailable {
-    if (_appOpenAd == null || _appOpenLoadTime == null) return false;
+    if (_isProUser || _appOpenAd == null || _appOpenLoadTime == null) return false;
     return DateTime.now().difference(_appOpenLoadTime!) < maxCacheDuration;
   }
 
   /// Show ad if available
-  void showAdIfAvailable() {
+  void showAdIfAvailable() async {
+    _isProUser = await InAppPurchaseService().getIsPro();
+    if (_isProUser) return;
+
     if (!isAdAvailable) {
       if (kDebugMode) {
         print('AppOpenAd is not available yet. Loading new ad.');

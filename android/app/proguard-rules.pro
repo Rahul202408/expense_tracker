@@ -30,3 +30,7 @@
 -dontwarn com.google.android.play.core.**
 -dontwarn io.flutter.embedding.engine.deferredcomponents.**
 
+# Google Play Billing Rules
+-keep class com.android.billingclient.** { *; }
+-dontwarn com.android.billingclient.**
+

@@ -12,6 +12,8 @@ import 'screens/splash/splash_screen.dart';
 import 'services/ad_service.dart';
 import 'services/app_open_ad_manager.dart';
 import 'services/notification_service.dart';
+import 'services/firebase_analytics_service.dart';
+import 'providers/pro_provider.dart';
 import 'widgets/no_internet_banner.dart';
 
 Future<void> main() async {
@@ -19,6 +21,7 @@ Future<void> main() async {
   await dotenv.load(fileName: ".env");
 
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+  FirebaseAnalyticsService().logAppOpen();
   await AdService.initialize();
   AppOpenAdManager().initialize();
 
@@ -29,6 +32,7 @@ Future<void> main() async {
         ChangeNotifierProvider(create: (_) => ThemeProvider()),
         ChangeNotifierProvider(create: (_) => ConnectivityProvider()),
         ChangeNotifierProvider(create: (_) => CurrencyProvider()),
+        ChangeNotifierProvider(create: (_) => ProProvider()),
       ],
       child: const ExpenseTrackerApp(),
     ),
@@ -45,6 +49,7 @@ class ExpenseTrackerApp extends StatelessWidget {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       title: "Expense Tracker: Money Manager",
+      navigatorObservers: [FirebaseAnalyticsService().observer],
       theme: AppTheme.lightTheme,
       darkTheme: AppTheme.darkTheme,
       themeMode: themeProvider.themeMode,

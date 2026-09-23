@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import '../../../providers/currency_provider.dart';
 import '../../../widgets/three_d_tilt_card.dart';
 import 'summary_card.dart';
 
@@ -16,6 +18,8 @@ class BalanceCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final currencySymbol = Provider.of<CurrencyProvider>(context).symbol;
+
     return ThreeDTiltCard(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       maxTiltAngle: 0.15,
@@ -149,7 +153,7 @@ class BalanceCard extends StatelessWidget {
                 const SizedBox(height: 16),
 
                 Text(
-                  "₹${balance.toStringAsFixed(2)}",
+                  "$currencySymbol${balance.toStringAsFixed(2)}",
                   style: const TextStyle(
                     color: Colors.white,
                     fontSize: 36,
@@ -172,7 +176,7 @@ class BalanceCard extends StatelessWidget {
                     Expanded(
                       child: SummaryCard(
                         title: "Income",
-                        amount: "₹${income.toStringAsFixed(2)}",
+                        amount: "$currencySymbol${income.toStringAsFixed(2)}",
                         icon: Icons.arrow_downward_rounded,
                         iconColor: const Color(0xff00E676),
                       ),
@@ -183,7 +187,7 @@ class BalanceCard extends StatelessWidget {
                     Expanded(
                       child: SummaryCard(
                         title: "Expense",
-                        amount: "₹${expense.toStringAsFixed(2)}",
+                        amount: "$currencySymbol${expense.toStringAsFixed(2)}",
                         icon: Icons.arrow_upward_rounded,
                         iconColor: const Color(0xffFF5252),
                       ),
