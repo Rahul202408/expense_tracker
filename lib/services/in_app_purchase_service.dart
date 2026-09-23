@@ -17,12 +17,14 @@ class InAppPurchaseService {
   // Product IDs configured in Google Play Console
   static const String monthlyPlanId = 'pro_monthly';
   static const String yearlyPlanId = 'pro_yearly';
-  static const String lifetimePlanId = 'pro_lifetime';
+  static const String lifetimePlanId = 'lifetime-buy';
+  static const String altLifetimePlanId = 'pro_lifetime';
 
   static const Set<String> _productIds = {
     monthlyPlanId,
     yearlyPlanId,
     lifetimePlanId,
+    altLifetimePlanId,
   };
 
   static const String _prefIsProKey = 'is_pro_user';
