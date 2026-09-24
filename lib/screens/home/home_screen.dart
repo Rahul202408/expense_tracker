@@ -18,6 +18,7 @@ import '../../services/notification_service.dart';
 import '../transaction/add_transaction_screen.dart';
 import '../../widgets/banner_ad_widget.dart';
 import '../../widgets/native_ad_widget.dart';
+import '../../widgets/app_shimmer.dart';
 
 class HomeScreen extends StatefulWidget {
   final Function(int)? onNavigateTab;
@@ -73,6 +74,12 @@ class _HomeScreenState extends State<HomeScreen> {
               StreamBuilder<List<TransactionModel>>(
                 stream: _transactionService.getTransactions(),
                 builder: (context, snapshot) {
+                  // Beautiful Shimmer UI while loading initial data
+                  if (snapshot.connectionState == ConnectionState.waiting &&
+                      !snapshot.hasData) {
+                    return const HomeDashboardSkeleton();
+                  }
+
                   final transactions = snapshot.data ?? [];
                   final income = _dashboardService.totalIncome(transactions);
                   final expense = _dashboardService.totalExpense(transactions);
@@ -86,14 +93,19 @@ class _HomeScreenState extends State<HomeScreen> {
                     );
                   });
 
+                  // Take only the top 6 most recent transactions for the dashboard to guarantee 120 FPS
+                  final recentTransactions = transactions.take(6).toList();
+
                   return Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // 3D Credit Card Balance
-                      BalanceCard(
-                        income: income,
-                        expense: expense,
-                        balance: balance,
+                      // 3D Credit Card Balance (isolated with RepaintBoundary for smooth scrolling)
+                      RepaintBoundary(
+                        child: BalanceCard(
+                          income: income,
+                          expense: expense,
+                          balance: balance,
+                        ),
                       ),
 
                       const SizedBox(height: 16),
@@ -114,9 +126,11 @@ class _HomeScreenState extends State<HomeScreen> {
                       const SizedBox(height: 12),
 
                       // Budget Health Liquid Meter
-                      BudgetProgressCard(
-                        income: income,
-                        expense: expense,
+                      RepaintBoundary(
+                        child: BudgetProgressCard(
+                          income: income,
+                          expense: expense,
+                        ),
                       ),
 
                       const SizedBox(height: 8),
@@ -128,14 +142,52 @@ class _HomeScreenState extends State<HomeScreen> {
 
                       Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 24),
-                        child: Text(
-                          "Recent Transactions",
-                          style: TextStyle(
-                            fontSize: 20,
-                            fontWeight: FontWeight.w800,
-                            color: textColor,
-                            letterSpacing: 0.2,
-                          ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(
+                              "Recent Transactions",
+                              style: TextStyle(
+                                fontSize: 20,
+                                fontWeight: FontWeight.w800,
+                                color: textColor,
+                                letterSpacing: 0.2,
+                              ),
+                            ),
+                            if (transactions.length > 6)
+                              InkWell(
+                                onTap: () {
+                                  if (widget.onNavigateTab != null) {
+                                    widget.onNavigateTab!(2);
+                                  }
+                                },
+                                borderRadius: BorderRadius.circular(8),
+                                child: Padding(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 8,
+                                    vertical: 4,
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      Text(
+                                        "See All (${transactions.length})",
+                                        style: const TextStyle(
+                                          color: Color(0xFF6366F1),
+                                          fontWeight: FontWeight.w700,
+                                          fontSize: 13,
+                                        ),
+                                      ),
+                                      const SizedBox(width: 4),
+                                      const Icon(
+                                        Icons.arrow_forward_ios_rounded,
+                                        size: 11,
+                                        color: Color(0xFF6366F1),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                          ],
                         ),
                       ),
 
@@ -149,9 +201,9 @@ class _HomeScreenState extends State<HomeScreen> {
                             ListView.builder(
                               shrinkWrap: true,
                               physics: const NeverScrollableScrollPhysics(),
-                              itemCount: transactions.length,
+                              itemCount: recentTransactions.length,
                               itemBuilder: (context, index) {
-                                final transaction = transactions[index];
+                                final transaction = recentTransactions[index];
 
                                 final tileWidget = Dismissible(
                                   key: Key(transaction.id),
@@ -206,6 +258,58 @@ class _HomeScreenState extends State<HomeScreen> {
                             ),
                             if (transactions.isNotEmpty && transactions.length <= 2)
                               const NativeAdWidget(),
+                            if (transactions.length > 6)
+                              Padding(
+                                padding: const EdgeInsets.fromLTRB(20, 8, 20, 0),
+                                child: InkWell(
+                                  onTap: () {
+                                    if (widget.onNavigateTab != null) {
+                                      widget.onNavigateTab!(2);
+                                    }
+                                  },
+                                  borderRadius: BorderRadius.circular(16),
+                                  child: Container(
+                                    width: double.infinity,
+                                    padding: const EdgeInsets.symmetric(vertical: 12),
+                                    decoration: BoxDecoration(
+                                      color: isDark
+                                          ? const Color(0xFF1E293B)
+                                          : const Color(0xFFEEF2F6),
+                                      borderRadius: BorderRadius.circular(16),
+                                      border: Border.all(
+                                        color: isDark
+                                            ? const Color(0xFF334155)
+                                            : const Color(0xFFCBD5E1),
+                                        width: 0.8,
+                                      ),
+                                    ),
+                                    alignment: Alignment.center,
+                                    child: Row(
+                                      mainAxisAlignment: MainAxisAlignment.center,
+                                      children: [
+                                        Text(
+                                          "View All ${transactions.length} Transactions",
+                                          style: TextStyle(
+                                            fontSize: 14,
+                                            fontWeight: FontWeight.w700,
+                                            color: isDark
+                                                ? const Color(0xFF818CF8)
+                                                : const Color(0xFF4F46E5),
+                                          ),
+                                        ),
+                                        const SizedBox(width: 6),
+                                        Icon(
+                                          Icons.arrow_forward_rounded,
+                                          size: 16,
+                                          color: isDark
+                                              ? const Color(0xFF818CF8)
+                                              : const Color(0xFF4F46E5),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              ),
                           ],
                         ),
 

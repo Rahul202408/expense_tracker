@@ -11,6 +11,8 @@ import 'widgets/password_strength_indicator.dart';
 import '../../services/auth_service.dart';
 import '../../services/currency_service.dart';
 import '../../utils/security_validator.dart';
+import '../../widgets/currency_picker_bottom_sheet.dart';
+import '../../services/app_open_ad_manager.dart';
 import '../profile/terms_conditions_screen.dart';
 import '../main_screen.dart';
 
@@ -85,6 +87,7 @@ class _SignupScreenState extends State<SignupScreen> {
   @override
   void initState() {
     super.initState();
+    AppOpenAdManager().setAdSuppressed(true);
     passwordController.addListener(_onPasswordChanged);
   }
 
@@ -152,41 +155,16 @@ class _SignupScreenState extends State<SignupScreen> {
     }
   }
 
-  void _showCountryPicker(BuildContext context) {
-    showDialog(
+  Future<void> _showCountryPicker(BuildContext context) async {
+    final picked = await showCurrencyPickerModal(
       context: context,
-      builder: (ctx) {
-        return AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-          title: const Text("Select Country & Currency"),
-          content: SizedBox(
-            width: double.maxFinite,
-            child: ListView.builder(
-              shrinkWrap: true,
-              itemCount: CurrencyService.supportedCurrencies.length,
-              itemBuilder: (context, index) {
-                final curr = CurrencyService.supportedCurrencies[index];
-                final isSelected = curr.code == _selectedCurrency.code;
-
-                return ListTile(
-                  title: Text("${curr.country} (${curr.symbol})"),
-                  subtitle: Text("${curr.name} [${curr.code}]"),
-                  trailing: isSelected
-                      ? const Icon(Icons.check_circle, color: Color(0xff11998E))
-                      : null,
-                  onTap: () {
-                    setState(() {
-                      _selectedCurrency = curr;
-                    });
-                    Navigator.pop(ctx);
-                  },
-                );
-              },
-            ),
-          ),
-        );
-      },
+      selectedCurrency: _selectedCurrency,
     );
+    if (picked != null && mounted) {
+      setState(() {
+        _selectedCurrency = picked;
+      });
+    }
   }
 
   @override
@@ -283,65 +261,170 @@ class _SignupScreenState extends State<SignupScreen> {
                         ),
                         const SizedBox(height: 16),
 
-                        // Country & Currency Selection Field
-                        GestureDetector(
-                          onTap: () => _showCountryPicker(context),
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 16,
-                              vertical: 14,
-                            ),
-                            decoration: BoxDecoration(
-                              color: isDark
-                                  ? const Color(0xff0F172A)
-                                  : Colors.grey.shade100,
-                              borderRadius: BorderRadius.circular(16),
-                              border: Border.all(
-                                color: isDark
-                                    ? Colors.white.withValues(alpha: 0.1)
-                                    : Colors.grey.shade300,
-                              ),
-                            ),
-                            child: Row(
-                              children: [
-                                const Icon(
-                                  Icons.public_rounded,
-                                  color: Color(0xff11998E),
-                                ),
-                                const SizedBox(width: 12),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        "Country & Currency",
-                                        style: TextStyle(
-                                          fontSize: 11,
-                                          color: isDark
-                                              ? Colors.grey.shade400
-                                              : Colors.grey.shade600,
-                                        ),
-                                      ),
-                                      Text(
-                                        "${_selectedCurrency.country} (${_selectedCurrency.symbol} ${_selectedCurrency.code})",
-                                        style: TextStyle(
-                                          fontSize: 14,
-                                          fontWeight: FontWeight.bold,
-                                          color: isDark
-                                              ? Colors.white
-                                              : Colors.black87,
-                                        ),
-                                      ),
+                        // Country & Currency Selection Card (Fintech Luxury Redesign)
+                        Container(
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(20),
+                            gradient: LinearGradient(
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                              colors: isDark
+                                  ? [
+                                      const Color(0xff1E293B),
+                                      const Color(0xff0F172A),
+                                    ]
+                                  : [
+                                      const Color(0xffF8FAFC),
+                                      const Color(0xffF1F5F9),
                                     ],
-                                  ),
+                            ),
+                            border: Border.all(
+                              color: const Color(0xff10B981).withValues(alpha: isDark ? 0.35 : 0.25),
+                              width: 1.4,
+                            ),
+                            boxShadow: [
+                              BoxShadow(
+                                color: const Color(0xff10B981).withValues(alpha: isDark ? 0.08 : 0.04),
+                                blurRadius: 14,
+                                offset: const Offset(0, 4),
+                              ),
+                            ],
+                          ),
+                          child: Material(
+                            color: Colors.transparent,
+                            borderRadius: BorderRadius.circular(20),
+                            child: InkWell(
+                              borderRadius: BorderRadius.circular(20),
+                              onTap: () => _showCountryPicker(context),
+                              child: Padding(
+                                padding: const EdgeInsets.all(13),
+                                child: Row(
+                                  children: [
+                                    // Flag in circular glass avatar with glow
+                                    Container(
+                                      width: 46,
+                                      height: 46,
+                                      decoration: BoxDecoration(
+                                        color: isDark ? const Color(0xff0F172A) : Colors.white,
+                                        shape: BoxShape.circle,
+                                        border: Border.all(
+                                          color: const Color(0xff10B981).withValues(alpha: 0.35),
+                                          width: 1.5,
+                                        ),
+                                        boxShadow: [
+                                          BoxShadow(
+                                            color: const Color(0xff10B981).withValues(alpha: 0.2),
+                                            blurRadius: 8,
+                                            offset: const Offset(0, 2),
+                                          ),
+                                        ],
+                                      ),
+                                      alignment: Alignment.center,
+                                      child: Text(
+                                        _selectedCurrency.flagEmoji,
+                                        style: const TextStyle(fontSize: 23),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 12),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Row(
+                                            children: [
+                                              Icon(
+                                                Icons.public_rounded,
+                                                size: 11,
+                                                color: isDark ? const Color(0xff34D399) : const Color(0xff059669),
+                                              ),
+                                              const SizedBox(width: 4),
+                                              Text(
+                                                "PRIMARY REGION & CURRENCY",
+                                                style: TextStyle(
+                                                  fontSize: 9.5,
+                                                  fontWeight: FontWeight.w800,
+                                                  letterSpacing: 0.8,
+                                                  color: isDark ? const Color(0xff34D399) : const Color(0xff059669),
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                          const SizedBox(height: 3),
+                                          Text(
+                                            _selectedCurrency.country,
+                                            style: TextStyle(
+                                              fontSize: 15,
+                                              fontWeight: FontWeight.w800,
+                                              color: isDark ? Colors.white : const Color(0xff0F172A),
+                                              letterSpacing: -0.2,
+                                            ),
+                                          ),
+                                          const SizedBox(height: 4),
+                                          Row(
+                                            children: [
+                                              Container(
+                                                padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                                                decoration: BoxDecoration(
+                                                  color: const Color(0xff10B981).withValues(alpha: 0.15),
+                                                  borderRadius: BorderRadius.circular(6),
+                                                ),
+                                                child: Text(
+                                                  "${_selectedCurrency.symbol} ${_selectedCurrency.code}",
+                                                  style: const TextStyle(
+                                                    fontSize: 11,
+                                                    fontWeight: FontWeight.w800,
+                                                    color: Color(0xff10B981),
+                                                  ),
+                                                ),
+                                              ),
+                                              const SizedBox(width: 6),
+                                              Flexible(
+                                                child: Text(
+                                                  _selectedCurrency.name,
+                                                  style: TextStyle(
+                                                    fontSize: 11,
+                                                    color: isDark ? Colors.grey.shade400 : Colors.grey.shade600,
+                                                  ),
+                                                  overflow: TextOverflow.ellipsis,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                      decoration: BoxDecoration(
+                                        color: const Color(0xff10B981).withValues(alpha: 0.12),
+                                        borderRadius: BorderRadius.circular(10),
+                                        border: Border.all(
+                                          color: const Color(0xff10B981).withValues(alpha: 0.25),
+                                        ),
+                                      ),
+                                      child: const Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Text(
+                                            "Change",
+                                            style: TextStyle(
+                                              fontSize: 11,
+                                              fontWeight: FontWeight.w700,
+                                              color: Color(0xff10B981),
+                                            ),
+                                          ),
+                                          SizedBox(width: 2),
+                                          Icon(
+                                            Icons.keyboard_arrow_down_rounded,
+                                            size: 16,
+                                            color: Color(0xff10B981),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
                                 ),
-                                Icon(
-                                  Icons.arrow_drop_down_rounded,
-                                  color: isDark
-                                      ? Colors.grey.shade400
-                                      : Colors.grey.shade600,
-                                ),
-                              ],
+                              ),
                             ),
                           ),
                         ),

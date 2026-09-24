@@ -7,6 +7,7 @@ import 'signup_screen.dart';
 import 'widgets/auth_header.dart';
 import 'widgets/auth_text_field.dart';
 import '../../services/auth_service.dart';
+import '../../services/app_open_ad_manager.dart';
 import '../main_screen.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -26,6 +27,12 @@ class _LoginScreenState extends State<LoginScreen> {
   bool rememberMe = true;
   bool isLoading = false;
   bool isGoogleLoading = false;
+
+  @override
+  void initState() {
+    super.initState();
+    AppOpenAdManager().setAdSuppressed(true);
+  }
 
   @override
   void dispose() {
@@ -111,10 +118,219 @@ class _LoginScreenState extends State<LoginScreen> {
         MaterialPageRoute(builder: (_) => const MainScreen()),
       );
     } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(result), backgroundColor: Colors.red),
-      );
+      final isAuthMismatch = result.toLowerCase().contains("credential") ||
+          result.toLowerCase().contains("password") ||
+          result.toLowerCase().contains("user-not-found") ||
+          result.toLowerCase().contains("wrong-password");
+
+      if (isAuthMismatch) {
+        _showAuthConflictSheet(emailController.text.trim());
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(result), backgroundColor: Colors.red),
+        );
+      }
     }
+  }
+
+  void _showAuthConflictSheet(String enteredEmail) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final surfaceColor = isDark ? const Color(0xff0F172A) : Colors.white;
+    final titleColor = isDark ? Colors.white : const Color(0xff0F172A);
+    final subtitleColor = isDark ? const Color(0xff94A3B8) : const Color(0xff64748B);
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (sheetCtx) {
+        return Container(
+          padding: const EdgeInsets.fromLTRB(22, 16, 22, 28),
+          decoration: BoxDecoration(
+            color: surfaceColor,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+            border: Border(
+              top: BorderSide(
+                color: isDark ? Colors.white12 : Colors.black12,
+                width: 1.2,
+              ),
+            ),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Center(
+                child: Container(
+                  width: 42,
+                  height: 4.5,
+                  decoration: BoxDecoration(
+                    color: isDark ? Colors.white24 : Colors.grey.shade300,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 18),
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: const Color(0xffF59E0B).withValues(alpha: 0.15),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(
+                      Icons.help_outline_rounded,
+                      color: Color(0xffF59E0B),
+                      size: 24,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          "Trouble Signing In?",
+                          style: TextStyle(
+                            fontSize: 17,
+                            fontWeight: FontWeight.w800,
+                            color: titleColor,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          "Incorrect password or Google linked account",
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: subtitleColor,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              Container(
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: isDark ? const Color(0xff1E293B) : const Color(0xffF8FAFC),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(
+                    color: isDark ? Colors.white12 : Colors.grey.shade200,
+                  ),
+                ),
+                child: Text(
+                  enteredEmail.isNotEmpty
+                      ? "If you previously signed in using Google for $enteredEmail, your password might not be set. You can sign in with 1-tap using Google, or send a reset link to set a password."
+                      : "If you previously signed in using Google, your password might not be set. You can sign in with 1-tap using Google, or reset your password.",
+                  style: TextStyle(
+                    fontSize: 13,
+                    height: 1.45,
+                    color: subtitleColor,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 18),
+
+              // Button 1: Continue with Google
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: isDark ? const Color(0xff1E293B) : Colors.white,
+                  foregroundColor: isDark ? Colors.white : Colors.black87,
+                  elevation: 1,
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                    side: BorderSide(
+                      color: isDark ? Colors.white24 : Colors.grey.shade300,
+                    ),
+                  ),
+                ),
+                onPressed: () {
+                  Navigator.pop(sheetCtx);
+                  handleGoogleSignIn();
+                },
+                child: const Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      Icons.account_circle_rounded,
+                      color: Color(0xff11998E),
+                      size: 22,
+                    ),
+                    SizedBox(width: 10),
+                    Text(
+                      "Continue with Google",
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 10),
+
+              // Button 2: Reset Password Email
+              OutlinedButton(
+                style: OutlinedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  side: const BorderSide(color: Color(0xff11998E), width: 1.2),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                ),
+                onPressed: () async {
+                  Navigator.pop(sheetCtx);
+                  if (enteredEmail.isNotEmpty && enteredEmail.contains("@")) {
+                    final res = await _authService.resetPassword(email: enteredEmail);
+                    if (mounted) {
+                      if (res == null) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text("Password reset email sent to $enteredEmail!"),
+                            backgroundColor: const Color(0xff11998E),
+                          ),
+                        );
+                      } else {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text(res), backgroundColor: Colors.red),
+                        );
+                      }
+                    }
+                  } else {
+                    _showForgotPasswordDialog();
+                  }
+                },
+                child: const Text(
+                  "Reset / Set Password",
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                    color: Color(0xff11998E),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 6),
+
+              TextButton(
+                onPressed: () => Navigator.pop(sheetCtx),
+                child: Text(
+                  "Try Password Again",
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: subtitleColor,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
   }
 
   void _showForgotPasswordDialog() {

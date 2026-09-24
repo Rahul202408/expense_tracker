@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../services/ad_service.dart';
+import '../services/app_prompt_service.dart';
 import '../providers/pro_provider.dart';
 
 class NativeAdWidget extends StatefulWidget {
@@ -25,9 +27,20 @@ class _NativeAdWidgetState extends State<NativeAdWidget> {
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
       final isPro = Provider.of<ProProvider>(context, listen: false).isPro;
-      if (!isPro) {
+      if (isPro) return;
+
+      // First-time users (Launch 1): Keep experience completely ad-free
+      try {
+        final prefs = await SharedPreferences.getInstance();
+        final launchCount = prefs.getInt(AppPromptService.keyLaunchCount) ?? 0;
+        if (launchCount <= 1) {
+          return;
+        }
+      } catch (_) {}
+
+      if (mounted) {
         _loadNativeAd();
       }
     });

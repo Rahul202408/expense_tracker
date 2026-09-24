@@ -1,3 +1,4 @@
+import 'dart:ui';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import '../../../../widgets/three_d_tilt_card.dart';
@@ -70,44 +71,57 @@ class _ExpensePieChartState extends State<ExpensePieChart> {
       centerSubText = "${pct.toStringAsFixed(1)}%";
     }
 
-    final cardBgColor = isDark ? const Color(0xff1E293B) : Colors.white;
+    final cardBgColor = isDark
+        ? Colors.white.withValues(alpha: 0.04)
+        : Colors.white.withValues(alpha: 0.65);
     final borderColor = isDark
-        ? Colors.white.withValues(alpha: 0.1)
-        : Colors.grey.shade200;
+        ? Colors.white.withValues(alpha: 0.14)
+        : Colors.white.withValues(alpha: 0.85);
 
     return ThreeDTiltCard(
       margin: const EdgeInsets.symmetric(vertical: 12),
-      maxTiltAngle: 0.10,
-      elevation: isDark ? 4 : 10,
+      maxTiltAngle: 0.08,
+      elevation: isDark ? 3 : 8,
       shadowColor: touchedIndex >= 0
           ? sectionColors[touchedIndex % sectionColors.length]
           : const Color(0xff11998E),
       borderRadius: BorderRadius.circular(28),
-      child: Container(
-        padding: const EdgeInsets.all(20),
-        decoration: BoxDecoration(
-          color: cardBgColor,
-          borderRadius: BorderRadius.circular(28),
-          border: Border.all(color: borderColor, width: 1.5),
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: isDark
-                ? [
-                    const Color(0xff1E293B),
-                    const Color(0xff151D2A),
-                  ]
-                : [
-                    Colors.white,
-                    const Color(0xffF8FAFC),
-                  ],
-          ),
-        ),
-        child: SizedBox(
-          height: 280,
-          child: Stack(
-            alignment: Alignment.center,
-            children: [
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(28),
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
+          child: Container(
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: cardBgColor,
+              borderRadius: BorderRadius.circular(28),
+              border: Border.all(color: borderColor, width: 1.5),
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: isDark
+                    ? [
+                        Colors.white.withValues(alpha: 0.08),
+                        Colors.white.withValues(alpha: 0.02),
+                      ]
+                    : [
+                        Colors.white.withValues(alpha: 0.75),
+                        Colors.white.withValues(alpha: 0.35),
+                      ],
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: isDark ? Colors.black26 : const Color(0xFF6366F1).withValues(alpha: 0.06),
+                  blurRadius: 20,
+                  offset: const Offset(0, 6),
+                ),
+              ],
+            ),
+            child: SizedBox(
+              height: 280,
+              child: Stack(
+                alignment: Alignment.center,
+                children: [
               // Outer Ambient Glow Ring
               Container(
                 width: 210,
@@ -266,6 +280,8 @@ class _ExpensePieChartState extends State<ExpensePieChart> {
               ),
             ],
           ),
+        ),
+      ),
         ),
       ),
     );

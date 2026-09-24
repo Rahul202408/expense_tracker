@@ -4,6 +4,7 @@ import '../../services/auth_service.dart';
 import '../../widgets/three_d_tilt_card.dart';
 import '../main_screen.dart';
 import '../splash/splash_screen.dart';
+import '../../services/app_open_ad_manager.dart';
 
 class AppLockScreen extends StatefulWidget {
   final VoidCallback? onSuccess;
@@ -26,6 +27,7 @@ class _AppLockScreenState extends State<AppLockScreen>
   @override
   void initState() {
     super.initState();
+    AppOpenAdManager().setAdSuppressed(true);
 
     _shakeController = AnimationController(
       duration: const Duration(milliseconds: 400),

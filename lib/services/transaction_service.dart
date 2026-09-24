@@ -8,22 +8,30 @@ class TransactionService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
 
   /// Current User ID
-  String get uid => _auth.currentUser!.uid;
+  String? get uid => _auth.currentUser?.uid;
 
   /// Transactions Collection Reference
-  CollectionReference<Map<String, dynamic>> get _transactionRef {
-    return _firestore.collection('users').doc(uid).collection('transactions');
+  CollectionReference<Map<String, dynamic>>? get _transactionRef {
+    final currentUid = uid;
+    if (currentUid == null) return null;
+    return _firestore.collection('users').doc(currentUid).collection('transactions');
   }
 
   /// Add Transaction
   Future<void> addTransaction(TransactionModel transaction) async {
-    await _transactionRef.add(transaction.toMap());
+    final ref = _transactionRef;
+    if (ref == null) return;
+    await ref.add(transaction.toMap());
   }
 
-
-  /// Get Transactions
+  /// Get Transactions - Direct Firestore Stream
+  /// Firestore SDK natively caches queries on-device and delivers the initial
+  /// snapshot instantly to every StreamBuilder.
   Stream<List<TransactionModel>> getTransactions() {
-    return _transactionRef
+    final ref = _transactionRef;
+    if (ref == null) return const Stream.empty();
+
+    return ref
         .orderBy('date', descending: true)
         .snapshots()
         .map(
@@ -35,11 +43,15 @@ class TransactionService {
 
   /// Update Transaction
   Future<void> updateTransaction(TransactionModel transaction) async {
-    await _transactionRef.doc(transaction.id).update(transaction.toMap());
+    final ref = _transactionRef;
+    if (ref == null) return;
+    await ref.doc(transaction.id).update(transaction.toMap());
   }
 
   /// Delete Transaction
   Future<void> deleteTransaction(String id) async {
-    await _transactionRef.doc(id).delete();
+    final ref = _transactionRef;
+    if (ref == null) return;
+    await ref.doc(id).delete();
   }
 }

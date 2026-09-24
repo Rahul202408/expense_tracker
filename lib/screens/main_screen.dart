@@ -7,6 +7,7 @@ import 'profile/profile_screen.dart';
 import 'home/widgets/custom_bottom_nav.dart';
 import '../services/auth_service.dart';
 import '../services/app_prompt_service.dart';
+import '../services/app_open_ad_manager.dart';
 
 class MainScreen extends StatefulWidget {
   const MainScreen({super.key});
@@ -21,12 +22,12 @@ class _MainScreenState extends State<MainScreen> {
   @override
   void initState() {
     super.initState();
+    AppOpenAdManager().setAdSuppressed(false);
     AuthService().updateLastActiveTime();
     _initLaunchPrompts();
   }
 
-  void _initLaunchPrompts() async {
-    await AppPromptService().registerLaunch();
+  void _initLaunchPrompts() {
     // Allow dashboard UI to render smoothly before checking and triggering contextual prompts
     Future.delayed(const Duration(milliseconds: 1400), () {
       if (mounted) {

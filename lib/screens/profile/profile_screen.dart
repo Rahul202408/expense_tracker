@@ -5,8 +5,6 @@ import 'package:firebase_auth/firebase_auth.dart';
 
 import '../../services/auth_service.dart';
 import '../../services/notification_service.dart';
-import '../../services/payment_notification_service.dart';
-import '../../services/currency_service.dart';
 import '../../providers/theme_provider.dart';
 import '../../providers/currency_provider.dart';
 import '../../widgets/app_logo.dart';
@@ -19,6 +17,7 @@ import 'app_guide_screen.dart';
 import '../pro/pro_screen.dart';
 import '../../providers/pro_provider.dart';
 import '../../widgets/google_review_dialog.dart';
+import '../../widgets/currency_picker_bottom_sheet.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -28,23 +27,6 @@ class ProfileScreen extends StatefulWidget {
 }
 
 class _ProfileScreenState extends State<ProfileScreen> {
-  bool _isAutoDetectEnabled = true;
-
-  @override
-  void initState() {
-    super.initState();
-    _loadAutoDetectSetting();
-  }
-
-  Future<void> _loadAutoDetectSetting() async {
-    final enabled = await PaymentNotificationService().isAutoDetectEnabled();
-    if (mounted) {
-      setState(() {
-        _isAutoDetectEnabled = enabled;
-      });
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     final AuthService authService = AuthService();
@@ -142,42 +124,49 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       iconColor: const Color(0xff10B981),
                       title: "Currency & Region",
                       subtitle: "Manage default display currency",
-                      trailing: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                        decoration: BoxDecoration(
-                          color: const Color(0xff10B981).withValues(alpha: 0.12),
-                          borderRadius: BorderRadius.circular(10),
-                          border: Border.all(
-                            color: const Color(0xff10B981).withValues(alpha: 0.25),
+                      trailing: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+                            decoration: BoxDecoration(
+                              color: const Color(0xff10B981).withValues(alpha: 0.12),
+                              borderRadius: BorderRadius.circular(10),
+                              border: Border.all(
+                                color: const Color(0xff10B981).withValues(alpha: 0.28),
+                              ),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text(
+                                  currencyProvider.currentCurrency.flagEmoji,
+                                  style: const TextStyle(fontSize: 13),
+                                ),
+                                const SizedBox(width: 5),
+                                Text(
+                                  "${currencyProvider.symbol} ${currencyProvider.code}",
+                                  style: const TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w800,
+                                    color: Color(0xff10B981),
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
-                        ),
-                        child: Text(
-                          "${currencyProvider.symbol} ${currencyProvider.code}",
-                          style: const TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w700,
-                            color: Color(0xff10B981),
+                          const SizedBox(width: 6),
+                          Icon(
+                            Icons.chevron_right_rounded,
+                            color: subtitleTextColor.withValues(alpha: 0.5),
+                            size: 22,
                           ),
-                        ),
+                        ],
                       ),
                       dividerColor: dividerColor,
                       onTap: () => _showCurrencyDialog(context, currencyProvider),
                     ),
-                    _buildSettingRow(
-                      icon: Icons.flash_auto_rounded,
-                      iconColor: const Color(0xff3B82F6),
-                      title: "Auto-Detect UPI Payments",
-                      subtitle: "Instant SMS/Notification expense logging",
-                      trailing: Switch.adaptive(
-                        value: _isAutoDetectEnabled,
-                        activeColor: const Color(0xff3B82F6),
-                        onChanged: (val) async {
-                          setState(() => _isAutoDetectEnabled = val);
-                          await PaymentNotificationService().setAutoDetectEnabled(val);
-                        },
-                      ),
-                      dividerColor: dividerColor,
-                    ),
+
                     _buildSettingRow(
                       icon: isDark ? Icons.dark_mode_rounded : Icons.light_mode_rounded,
                       iconColor: isDark ? const Color(0xff818CF8) : const Color(0xffF59E0B),
@@ -407,7 +396,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           ),
                         ),
                         child: const Text(
-                          "v1.2.1 (21)",
+                          "v1.2.3 (23)",
                           style: TextStyle(
                             fontSize: 11,
                             fontWeight: FontWeight.w700,
@@ -1045,59 +1034,23 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   // ===================== DIALOGS & ACTIONS =====================
 
-  void _showCurrencyDialog(BuildContext context, CurrencyProvider currencyProvider) {
-    showDialog(
+  Future<void> _showCurrencyDialog(BuildContext context, CurrencyProvider currencyProvider) async {
+    final picked = await showCurrencyPickerModal(
       context: context,
-      builder: (ctx) {
-        return AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-          title: const Text(
-            "Select Currency & Country",
-            style: TextStyle(fontWeight: FontWeight.w800, fontSize: 18),
-          ),
-          content: SizedBox(
-            width: double.maxFinite,
-            child: ListView.builder(
-              shrinkWrap: true,
-              itemCount: CurrencyService.supportedCurrencies.length,
-              itemBuilder: (context, index) {
-                final curr = CurrencyService.supportedCurrencies[index];
-                final isSelected = curr.code == currencyProvider.code;
-
-                return ListTile(
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                  tileColor: isSelected ? const Color(0xff10B981).withValues(alpha: 0.1) : null,
-                  title: Text(
-                    "${curr.name} (${curr.symbol})",
-                    style: TextStyle(
-                      fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
-                      color: isSelected ? const Color(0xff10B981) : null,
-                    ),
-                  ),
-                  subtitle: Text("${curr.country} [${curr.countryCode}]"),
-                  trailing: isSelected
-                      ? const Icon(Icons.check_circle_rounded, color: Color(0xff10B981))
-                      : null,
-                  onTap: () async {
-                    await currencyProvider.setCurrency(curr);
-                    if (ctx.mounted) Navigator.pop(ctx);
-                    if (context.mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text("Currency updated to ${curr.name} (${curr.symbol})! 🎉"),
-                          backgroundColor: const Color(0xff10B981),
-                          duration: const Duration(seconds: 2),
-                        ),
-                      );
-                    }
-                  },
-                );
-              },
-            ),
+      selectedCurrency: currencyProvider.currentCurrency,
+    );
+    if (picked != null) {
+      await currencyProvider.setCurrency(picked);
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text("Currency updated to ${picked.country} (${picked.symbol} ${picked.code})! 🎉"),
+            backgroundColor: const Color(0xff10B981),
+            duration: const Duration(seconds: 2),
           ),
         );
-      },
-    );
+      }
+    }
   }
 
   void _showPrivacyPolicyDialog(BuildContext context) {
@@ -1150,7 +1103,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 borderRadius: BorderRadius.circular(8),
               ),
               child: const Text(
-                "Version: 1.2.1 (Build 21)",
+                "Version: 1.2.3 (Build 23)",
                 style: TextStyle(
                   fontWeight: FontWeight.w800,
                   color: Color(0xff10B981),

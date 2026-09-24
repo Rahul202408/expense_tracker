@@ -7,6 +7,7 @@ import '../../widgets/custom_page_indicator.dart';
 import '../../widgets/primary_button.dart';
 import 'onboarding_data.dart';
 import '../auth/login_screen.dart';
+import '../../services/app_open_ad_manager.dart';
 
 class OnboardingScreen extends StatefulWidget {
   const OnboardingScreen({super.key});
@@ -19,6 +20,12 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   final PageController _pageController = PageController();
 
   int currentPage = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    AppOpenAdManager().setAdSuppressed(true);
+  }
 
   Future<void> finishOnboarding() async {
     final prefs = await SharedPreferences.getInstance();

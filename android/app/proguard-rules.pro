@@ -1,22 +1,21 @@
-# Flutter Wrapper Rules
--keep class io.flutter.app.** { *; }
--keep class io.flutter.plugin.** { *; }
--keep class io.flutter.util.** { *; }
--keep class io.flutter.view.** { *; }
--keep class io.flutter.internal.** { *; }
--keep class io.flutter.embedding.** { *; }
+# ==============================================================================
+# Flutter & Application Rules
+# ==============================================================================
+-keep class com.trtech.expense_tracker.MainActivity { *; }
 
-# Firebase & Google Play Services Rules
--keep class com.google.firebase.** { *; }
--keep class com.google.android.gms.** { *; }
--dontwarn com.google.firebase.**
--dontwarn com.google.android.gms.**
+-keep class io.flutter.facade.** { *; }
+-keepclassmembers class * {
+    @androidx.annotation.Keep *;
+}
+-keep class * implements io.flutter.plugin.common.PluginRegistry$PluginRegistrantCallback { *; }
+-keep class * implements io.flutter.embedding.engine.plugins.FlutterPlugin { *; }
 
-# Google Mobile Ads (AdMob) Rules
--keep class com.google.android.gms.ads.** { *; }
--dontwarn com.google.android.gms.ads.**
+# Keep native methods called by Flutter engine / JNI
+-keepclasseswithmembers class * {
+    native <methods>;
+}
 
-# Flutter Local Notifications Rules
+# Flutter Local Notifications
 -keep class com.dexterous.flutterlocalnotifications.** { *; }
 -dontwarn com.dexterous.flutterlocalnotifications.**
 
@@ -24,13 +23,20 @@
 -keepattributes *Annotation*
 -keepattributes Signature
 -keepattributes InnerClasses
+-keepattributes EnclosingMethod
 -dontwarn java.lang.invoke.**
+-dontwarn javax.annotation.**
 
-# Flutter Deferred Components & Play Core Rules
+# ==============================================================================
+# Firebase, Google Play Services, AdMob & Billing
+# NOTE: These official SDKs bundle their own Consumer Proguard Rules inside their AARs.
+# We intentionally do NOT use blanket '-keep class com.google.** { *; }' so R8 can
+# safely optimize and obfuscate internal code, maintaining DEX obfuscation well above 25%.
+# ==============================================================================
+-dontwarn com.google.firebase.**
+-dontwarn com.google.android.gms.**
+-dontwarn com.google.android.gms.ads.**
+-dontwarn com.android.billingclient.**
+-dontwarn com.google.errorprone.annotations.**
 -dontwarn com.google.android.play.core.**
 -dontwarn io.flutter.embedding.engine.deferredcomponents.**
-
-# Google Play Billing Rules
--keep class com.android.billingclient.** { *; }
--dontwarn com.android.billingclient.**
-

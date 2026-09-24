@@ -9,6 +9,8 @@ import '../auth/login_screen.dart';
 import '../main_screen.dart';
 import '../../services/auth_service.dart';
 import '../../services/security_service.dart';
+import '../../services/app_open_ad_manager.dart';
+import '../../services/app_prompt_service.dart';
 import '../auth/app_lock_screen.dart';
 
 class SplashScreen extends StatefulWidget {
@@ -33,6 +35,7 @@ class _SplashScreenState extends State<SplashScreen>
   @override
   void initState() {
     super.initState();
+    AppOpenAdManager().setAdSuppressed(true);
 
     // Main entrance animation controller
     _mainController = AnimationController(
@@ -101,6 +104,9 @@ class _SplashScreenState extends State<SplashScreen>
   }
 
   Future<void> checkFirstLaunch() async {
+    // Register app cold launch count for contextual prompts and ad gating
+    await AppPromptService().registerLaunch();
+
     final prefs = await SharedPreferences.getInstance();
     bool seen = prefs.getBool("onboarding") ?? false;
 
@@ -473,7 +479,7 @@ class _SplashScreenState extends State<SplashScreen>
                           ),
                           const SizedBox(height: 4),
                           Text(
-                            "Version 1.2.1",
+                            "Version 1.2.3",
                             style: TextStyle(
                               fontSize: 10,
                               fontWeight: FontWeight.w600,

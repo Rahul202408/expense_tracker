@@ -22,13 +22,33 @@ class TransactionModel {
     Map<String, dynamic> map,
     String documentId,
   ) {
+    DateTime parsedDate;
+    final rawDate = map['date'];
+    if (rawDate is Timestamp) {
+      parsedDate = rawDate.toDate();
+    } else if (rawDate is String) {
+      parsedDate = DateTime.tryParse(rawDate) ?? DateTime.now();
+    } else if (rawDate is int) {
+      parsedDate = DateTime.fromMillisecondsSinceEpoch(rawDate);
+    } else {
+      parsedDate = DateTime.now();
+    }
+
+    final rawAmount = map['amount'];
+    double parsedAmount = 0.0;
+    if (rawAmount is num) {
+      parsedAmount = rawAmount.toDouble();
+    } else if (rawAmount is String) {
+      parsedAmount = double.tryParse(rawAmount) ?? 0.0;
+    }
+
     return TransactionModel(
       id: documentId,
-      title: map['title'] ?? '',
-      category: map['category'] ?? '',
-      amount: (map['amount'] ?? 0).toDouble(),
-      isExpense: map['isExpense'] ?? true,
-      date: (map['date'] as Timestamp).toDate(),
+      title: map['title']?.toString() ?? '',
+      category: map['category']?.toString() ?? 'Other',
+      amount: parsedAmount,
+      isExpense: map['isExpense'] is bool ? map['isExpense'] as bool : true,
+      date: parsedDate,
     );
   }
 

@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
@@ -12,6 +12,7 @@ import '../home/widgets/transaction_tile.dart';
 import '../../widgets/three_d_tilt_card.dart';
 import '../transaction/add_transaction_screen.dart';
 import '../../widgets/native_ad_widget.dart';
+import '../../widgets/app_shimmer.dart';
 
 class HistoryScreen extends StatefulWidget {
   const HistoryScreen({super.key});
@@ -388,8 +389,9 @@ class _HistoryScreenState extends State<HistoryScreen> {
             child: StreamBuilder<List<TransactionModel>>(
               stream: _transactionService.getTransactions(),
               builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const Center(child: CircularProgressIndicator());
+                if (snapshot.connectionState == ConnectionState.waiting &&
+                    !snapshot.hasData) {
+                  return const HistoryListSkeleton();
                 }
 
                 final transactions = snapshot.data ?? [];
