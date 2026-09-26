@@ -11,6 +11,7 @@ import 'providers/theme_provider.dart';
 import 'screens/splash/splash_screen.dart';
 import 'services/ad_service.dart';
 import 'services/app_open_ad_manager.dart';
+import 'services/auth_service.dart';
 import 'services/notification_service.dart';
 import 'services/firebase_analytics_service.dart';
 import 'providers/pro_provider.dart';
@@ -18,14 +19,21 @@ import 'widgets/no_internet_banner.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await dotenv.load(fileName: ".env");
-
+  await AuthService.initCachedSession();
+  try {
+    await dotenv.load(fileName: ".env");
+  } catch (e) {
+    debugPrint("dotenv load note: $e");
+  }
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
   FirebaseAnalyticsService().logAppOpen();
-  await AdService.initialize();
-  AppOpenAdManager().initialize();
 
-  await NotificationService().init();
+  // Initialize ads & notifications in parallel without blocking initial UI frame
+  AdService.initialize().then((_) {
+    AppOpenAdManager().initialize();
+  });
+  NotificationService().init();
+
   runApp(
     MultiProvider(
       providers: [

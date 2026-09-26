@@ -8,6 +8,7 @@ class CategorySpendCard extends StatelessWidget {
   final int count;
   final String currencySymbol;
   final int rank;
+  final bool isExpense;
 
   const CategorySpendCard({
     super.key,
@@ -17,6 +18,7 @@ class CategorySpendCard extends StatelessWidget {
     required this.count,
     required this.currencySymbol,
     required this.rank,
+    this.isExpense = true,
   });
 
   static IconData getCategoryIcon(String cat) {

@@ -2,7 +2,7 @@ name: expense_tracker
 description: "A new Flutter project."
 publish_to: "none"
 
-version: 1.2.3+23
+version: 1.2.7+27
 
 environment:
   sdk: ^3.8.1
@@ -69,14 +69,3 @@ flutter_launcher_icons:
   image_path: "assets/images/app-logo.png"
   min_sdk_android: 21
 
-flutter_native_splash:
-  color: "#FFFFFF"
-  image: assets/images/app-logo.png
-
-  android: true
-  ios: true
-  web: false
-
-  android_12:
-    color: "#FFFFFF"
-    image: assets/images/app-logo.png

@@ -3,6 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:provider/provider.dart';
 import '../../../providers/pro_provider.dart';
+import '../../../services/auth_service.dart';
 import '../../pro/pro_screen.dart';
 
 class HomeHeader extends StatelessWidget {
@@ -27,12 +28,13 @@ class HomeHeader extends StatelessWidget {
     final textColor = isDark ? Colors.white : const Color(0xff1A202C);
 
     final user = FirebaseAuth.instance.currentUser;
-    if (user == null) {
+    final currentUid = user?.uid ?? AuthService.cachedUid;
+    if (currentUid == null) {
       return const SizedBox.shrink();
     }
 
     return StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
-      stream: FirebaseFirestore.instance.collection('users').doc(user.uid).snapshots(),
+      stream: FirebaseFirestore.instance.collection('users').doc(currentUid).snapshots(),
       builder: (context, snapshot) {
         final userData = snapshot.data?.data();
         String name = "User";
@@ -42,7 +44,7 @@ class HomeHeader extends StatelessWidget {
             userData['fullName'] != null &&
             userData['fullName'].toString().trim().isNotEmpty) {
           name = userData['fullName'].toString().trim();
-        } else if (user.displayName != null && user.displayName!.trim().isNotEmpty) {
+        } else if (user?.displayName != null && user!.displayName!.trim().isNotEmpty) {
           name = user.displayName!.trim();
         }
 
@@ -50,7 +52,7 @@ class HomeHeader extends StatelessWidget {
                 userData['photoUrl'] != null &&
                 userData['photoUrl'].toString().isNotEmpty)
             ? userData['photoUrl'].toString()
-            : (user.photoURL ?? '');
+            : (user?.photoURL ?? '');
 
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,

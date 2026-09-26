@@ -8,6 +8,7 @@ import 'home/widgets/custom_bottom_nav.dart';
 import '../services/auth_service.dart';
 import '../services/app_prompt_service.dart';
 import '../services/app_open_ad_manager.dart';
+import '../services/app_update_service.dart';
 
 class MainScreen extends StatefulWidget {
   const MainScreen({super.key});
@@ -29,9 +30,13 @@ class _MainScreenState extends State<MainScreen> {
 
   void _initLaunchPrompts() {
     // Allow dashboard UI to render smoothly before checking and triggering contextual prompts
-    Future.delayed(const Duration(milliseconds: 1400), () {
+    Future.delayed(const Duration(milliseconds: 1400), () async {
       if (mounted) {
-        AppPromptService().checkAndTriggerPrompts(context);
+        // High priority: Check if new version is released on Google Play Store
+        await AppUpdateService().checkForUpdate(context);
+        if (mounted) {
+          AppPromptService().checkAndTriggerPrompts(context);
+        }
       }
     });
   }

@@ -1,3 +1,4 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:provider/provider.dart';
@@ -64,7 +65,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         elevation: 0,
         scrolledUnderElevation: 0,
       ),
-      body: FutureBuilder<DocumentSnapshot<Map<String, dynamic>>>(
+      body: FutureBuilder<DocumentSnapshot<Map<String, dynamic>>?>(
         future: authService.getUserData(),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
@@ -396,7 +397,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           ),
                         ),
                         child: const Text(
-                          "v1.2.3 (23)",
+                          "v1.2.6 (26)",
                           style: TextStyle(
                             fontSize: 11,
                             fontWeight: FontWeight.w700,
@@ -490,7 +491,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       ),
                       const SizedBox(height: 8),
                       Text(
-                        "Expense Tracker • Version 1.2.1 (Build 21)",
+                        "Expense Tracker • Version 1.2.7 (Build 27)",
                         style: TextStyle(
                           fontSize: 11,
                           fontWeight: FontWeight.w500,
@@ -1054,21 +1055,200 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   void _showPrivacyPolicyDialog(BuildContext context) {
-    showDialog(
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    showGeneralDialog(
       context: context,
-      builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-        title: const Text("Privacy Policy", style: TextStyle(fontWeight: FontWeight.w800)),
-        content: const SingleChildScrollView(
-          child: Text(
-            "Expense Tracker values your privacy. We collect minimal personal information necessary to manage your financial data securely.\n\nAll your expense data is stored securely using Google Firebase encryption. We never share or sell your personal or financial information to any third party.",
-            style: TextStyle(fontSize: 14, height: 1.5),
+      barrierDismissible: true,
+      barrierLabel: "Dismiss",
+      barrierColor: Colors.black.withValues(alpha: 0.55),
+      transitionDuration: const Duration(milliseconds: 250),
+      pageBuilder: (ctx, anim1, anim2) => const SizedBox(),
+      transitionBuilder: (ctx, anim, secondaryAnim, child) {
+        final curvedAnim = CurvedAnimation(
+          parent: anim,
+          curve: Curves.easeOutBack,
+        );
+        return BackdropFilter(
+          filter: ImageFilter.blur(
+            sigmaX: 8 * anim.value,
+            sigmaY: 8 * anim.value,
           ),
+          child: ScaleTransition(
+            scale: curvedAnim,
+            child: FadeTransition(
+              opacity: anim,
+              child: Dialog(
+                backgroundColor: isDark ? const Color(0xff1E293B) : Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(26),
+                  side: BorderSide(
+                    color: isDark ? Colors.white10 : Colors.black.withValues(alpha: 0.05),
+                    width: 1,
+                  ),
+                ),
+                elevation: 16,
+                insetPadding: const EdgeInsets.symmetric(horizontal: 22, vertical: 24),
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(22, 26, 22, 22),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Container(
+                        width: 62,
+                        height: 62,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          gradient: LinearGradient(
+                            colors: [
+                              const Color(0xff6366F1).withValues(alpha: 0.22),
+                              const Color(0xff8B5CF6).withValues(alpha: 0.1),
+                            ],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: const Color(0xff6366F1).withValues(alpha: 0.25),
+                              blurRadius: 18,
+                              spreadRadius: 2,
+                            ),
+                          ],
+                        ),
+                        child: const Icon(
+                          Icons.verified_user_rounded,
+                          color: Color(0xff6366F1),
+                          size: 32,
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      Text(
+                        "Privacy Policy",
+                        style: TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: -0.3,
+                          color: isDark ? Colors.white : const Color(0xff0F172A),
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        "Your privacy and financial security come first.",
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: isDark ? Colors.white60 : const Color(0xff64748B),
+                        ),
+                      ),
+                      const SizedBox(height: 18),
+                      _buildPrivacyItem(
+                        icon: Icons.lock_outline_rounded,
+                        color: const Color(0xff10B981),
+                        title: "Encrypted Cloud Storage",
+                        subtitle: "All records are securely encrypted via Google Firebase servers.",
+                        isDark: isDark,
+                      ),
+                      const SizedBox(height: 10),
+                      _buildPrivacyItem(
+                        icon: Icons.shield_outlined,
+                        color: const Color(0xff3B82F6),
+                        title: "No Data Selling",
+                        subtitle: "We never sell, rent, or trade your personal or financial data.",
+                        isDark: isDark,
+                      ),
+                      const SizedBox(height: 10),
+                      _buildPrivacyItem(
+                        icon: Icons.download_done_rounded,
+                        color: const Color(0xff8B5CF6),
+                        title: "You Own Your Data",
+                        subtitle: "You can export reports to Excel/PDF or delete your data anytime.",
+                        isDark: isDark,
+                      ),
+                      const SizedBox(height: 22),
+                      SizedBox(
+                        width: double.infinity,
+                        child: ElevatedButton(
+                          onPressed: () => Navigator.pop(ctx),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xff6366F1),
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(14),
+                            ),
+                            elevation: 0,
+                          ),
+                          child: const Text(
+                            "Understood",
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildPrivacyItem({
+    required IconData icon,
+    required Color color,
+    required String title,
+    required String subtitle,
+    required bool isDark,
+  }) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xff0F172A) : const Color(0xffF8FAFC),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+          color: isDark ? Colors.white10 : const Color(0xffE2E8F0),
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text("Close", style: TextStyle(fontWeight: FontWeight.w700)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(7),
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Icon(icon, size: 16, color: color),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: TextStyle(
+                    fontWeight: FontWeight.w700,
+                    fontSize: 13,
+                    color: isDark ? Colors.white : const Color(0xff1E293B),
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  subtitle,
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: isDark ? Colors.white60 : const Color(0xff64748B),
+                    height: 1.3,
+                  ),
+                ),
+              ],
+            ),
           ),
         ],
       ),
@@ -1076,60 +1256,211 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   void _showAboutAppDialog(BuildContext context) {
-    showDialog(
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    showGeneralDialog(
       context: context,
-      builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-        title: const Row(
-          children: [
-            AppLogo(size: 38, showShadow: false),
-            SizedBox(width: 12),
-            Expanded(
-              child: Text(
-                "Expense Tracker",
-                style: TextStyle(fontWeight: FontWeight.w800, fontSize: 18),
-              ),
-            ),
-          ],
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-              decoration: BoxDecoration(
-                color: const Color(0xff10B981).withValues(alpha: 0.12),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: const Text(
-                "Version: 1.2.3 (Build 23)",
-                style: TextStyle(
-                  fontWeight: FontWeight.w800,
-                  color: Color(0xff10B981),
-                  fontSize: 12,
+      barrierDismissible: true,
+      barrierLabel: "Dismiss",
+      barrierColor: Colors.black.withValues(alpha: 0.55),
+      transitionDuration: const Duration(milliseconds: 250),
+      pageBuilder: (ctx, anim1, anim2) => const SizedBox(),
+      transitionBuilder: (ctx, anim, secondaryAnim, child) {
+        final curvedAnim = CurvedAnimation(
+          parent: anim,
+          curve: Curves.easeOutBack,
+        );
+        return BackdropFilter(
+          filter: ImageFilter.blur(
+            sigmaX: 8 * anim.value,
+            sigmaY: 8 * anim.value,
+          ),
+          child: ScaleTransition(
+            scale: curvedAnim,
+            child: FadeTransition(
+              opacity: anim,
+              child: Dialog(
+                backgroundColor: isDark ? const Color(0xff1E293B) : Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(26),
+                  side: BorderSide(
+                    color: isDark ? Colors.white10 : Colors.black.withValues(alpha: 0.05),
+                    width: 1,
+                  ),
+                ),
+                elevation: 16,
+                insetPadding: const EdgeInsets.symmetric(horizontal: 22, vertical: 24),
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(22, 26, 22, 22),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: isDark ? const Color(0xff0F172A) : const Color(0xffF1F5F9),
+                          boxShadow: [
+                            BoxShadow(
+                              color: const Color(0xff6366F1).withValues(alpha: 0.18),
+                              blurRadius: 20,
+                              spreadRadius: 2,
+                            ),
+                          ],
+                        ),
+                        child: const AppLogo(size: 48, showShadow: false),
+                      ),
+                      const SizedBox(height: 16),
+                      Text(
+                        "Expense Tracker",
+                        style: TextStyle(
+                          fontSize: 21,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: -0.4,
+                          color: isDark ? Colors.white : const Color(0xff0F172A),
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        "Smart Money & Budget Manager",
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
+                          color: isDark ? Colors.white60 : const Color(0xff64748B),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+                        decoration: BoxDecoration(
+                          color: const Color(0xff10B981).withValues(alpha: 0.12),
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(
+                            color: const Color(0xff10B981).withValues(alpha: 0.25),
+                          ),
+                        ),
+                        child: const Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.verified_rounded, size: 14, color: Color(0xff10B981)),
+                            SizedBox(width: 5),
+                            Text(
+                              "Version 1.2.7 (Build 27)",
+                              style: TextStyle(
+                                fontWeight: FontWeight.w800,
+                                color: Color(0xff10B981),
+                                fontSize: 11,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 18),
+                      Container(
+                        padding: const EdgeInsets.all(14),
+                        decoration: BoxDecoration(
+                          color: isDark ? const Color(0xff0F172A) : const Color(0xffF8FAFC),
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(
+                            color: isDark ? Colors.white10 : const Color(0xffE2E8F0),
+                          ),
+                        ),
+                        child: Column(
+                          children: [
+                            _buildAboutFeatureRow(
+                              icon: Icons.insights_rounded,
+                              color: const Color(0xff3B82F6),
+                              text: "Smart Analytics & Category Insights",
+                              isDark: isDark,
+                            ),
+                            const SizedBox(height: 8),
+                            _buildAboutFeatureRow(
+                              icon: Icons.cloud_sync_rounded,
+                              color: const Color(0xff10B981),
+                              text: "Real-time Cloud Sync & Backup",
+                              isDark: isDark,
+                            ),
+                            const SizedBox(height: 8),
+                            _buildAboutFeatureRow(
+                              icon: Icons.lock_rounded,
+                              color: const Color(0xffF59E0B),
+                              text: "PIN & Biometric Security Protection",
+                              isDark: isDark,
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      Text(
+                        "Developed with ❤️ by TR Tech Solutions",
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: isDark ? Colors.white70 : const Color(0xff475569),
+                        ),
+                      ),
+                      const SizedBox(height: 20),
+                      SizedBox(
+                        width: double.infinity,
+                        child: ElevatedButton(
+                          onPressed: () => Navigator.pop(ctx),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: isDark ? const Color(0xff334155) : const Color(0xff0F172A),
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(14),
+                            ),
+                            elevation: 0,
+                          ),
+                          child: const Text(
+                            "Close",
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),
-            const SizedBox(height: 12),
-            const Text(
-              "Developed by TR Tech Solutions.",
-              style: TextStyle(fontWeight: FontWeight.w600),
-            ),
-            const SizedBox(height: 8),
-            const Text(
-              "An intuitive, smart money manager designed to help you track daily expenses, manage category budgets, and achieve financial freedom.",
-              style: TextStyle(fontSize: 13, height: 1.4, color: Colors.grey),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text("Close", style: TextStyle(fontWeight: FontWeight.w700)),
           ),
-        ],
-      ),
+        );
+      },
+    );
+  }
+
+  Widget _buildAboutFeatureRow({
+    required IconData icon,
+    required Color color,
+    required String text,
+    required bool isDark,
+  }) {
+    return Row(
+      children: [
+        Container(
+          padding: const EdgeInsets.all(6),
+          decoration: BoxDecoration(
+            color: color.withValues(alpha: 0.12),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Icon(icon, size: 14, color: color),
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Text(
+            text,
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: isDark ? Colors.white70 : const Color(0xff334155),
+            ),
+          ),
+        ),
+      ],
     );
   }
 
@@ -1579,11 +1910,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     // Card 3: Test Notification Button
                     InkWell(
                       onTap: () async {
-                        await notifService.showLocalNotification(
-                          id: 8888,
-                          title: "🔔 Expense Reminder",
-                          body: "Don't forget to track your expenses for today!",
-                        );
+                        await notifService.sendTestNotification();
                         if (context.mounted) {
                           ScaffoldMessenger.of(context).showSnackBar(
                             const SnackBar(
@@ -1664,123 +1991,498 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   void _showLogoutConfirmDialog(BuildContext context, AuthService authService) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final userEmail = FirebaseAuth.instance.currentUser?.email ?? AuthService.cachedEmail;
+    final userName = FirebaseAuth.instance.currentUser?.displayName;
 
-    showDialog(
+    showGeneralDialog(
       context: context,
-      builder: (ctx) {
-        return AlertDialog(
-          backgroundColor: isDark ? const Color(0xff1E293B) : Colors.white,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-          title: Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: const Color(0xffEF4444).withValues(alpha: 0.15),
-                ),
-                child: const Icon(
-                  Icons.logout_rounded,
-                  color: Color(0xffEF4444),
-                  size: 22,
+      barrierDismissible: true,
+      barrierLabel: "LogoutDialog",
+      barrierColor: Colors.black.withValues(alpha: 0.55),
+      transitionDuration: const Duration(milliseconds: 260),
+      pageBuilder: (ctx, anim1, anim2) {
+        return const SizedBox.shrink();
+      },
+      transitionBuilder: (ctx, anim1, anim2, child) {
+        final curve = CurvedAnimation(parent: anim1, curve: Curves.easeOutBack);
+        return BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
+          child: ScaleTransition(
+            scale: Tween<double>(begin: 0.88, end: 1.0).animate(curve),
+            child: FadeTransition(
+              opacity: anim1,
+              child: Dialog(
+                backgroundColor: Colors.transparent,
+                insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: isDark ? const Color(0xff131D31) : Colors.white,
+                    borderRadius: BorderRadius.circular(28),
+                    border: Border.all(
+                      color: isDark
+                          ? Colors.white.withValues(alpha: 0.12)
+                          : Colors.grey.shade200,
+                      width: 1.2,
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: isDark ? 0.45 : 0.15),
+                        blurRadius: 30,
+                        offset: const Offset(0, 12),
+                      ),
+                    ],
+                  ),
+                  padding: const EdgeInsets.fromLTRB(22, 26, 22, 22),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      // 1. Glowing Luxury Logout Icon Badge
+                      Container(
+                        width: 72,
+                        height: 72,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          gradient: LinearGradient(
+                            colors: [
+                              const Color(0xffEF4444).withValues(alpha: 0.22),
+                              const Color(0xffF43F5E).withValues(alpha: 0.08),
+                            ],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                          ),
+                          border: Border.all(
+                            color: const Color(0xffEF4444).withValues(alpha: 0.35),
+                            width: 1.5,
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: const Color(0xffEF4444).withValues(alpha: 0.25),
+                              blurRadius: 20,
+                              offset: const Offset(0, 6),
+                            ),
+                          ],
+                        ),
+                        child: Center(
+                          child: Container(
+                            width: 50,
+                            height: 50,
+                            decoration: const BoxDecoration(
+                              shape: BoxShape.circle,
+                              gradient: LinearGradient(
+                                colors: [Color(0xffEF4444), Color(0xffDC2626)],
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
+                              ),
+                            ),
+                            child: const Icon(
+                              Icons.logout_rounded,
+                              color: Colors.white,
+                              size: 24,
+                            ),
+                          ),
+                        ),
+                      ),
+
+                      const SizedBox(height: 18),
+
+                      // 2. Title
+                      Text(
+                        "Log Out of Expense Tracker?",
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontSize: 19,
+                          fontWeight: FontWeight.w800,
+                          color: isDark ? Colors.white : const Color(0xff0F172A),
+                          letterSpacing: -0.3,
+                        ),
+                      ),
+
+                      const SizedBox(height: 8),
+
+                      // 3. Subtitle description
+                      Text(
+                        "Are you sure you want to exit? You can sign right back in anytime to continue managing your money.",
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontSize: 13,
+                          height: 1.45,
+                          fontWeight: FontWeight.w500,
+                          color: isDark ? const Color(0xff94A3B8) : const Color(0xff64748B),
+                        ),
+                      ),
+
+                      const SizedBox(height: 18),
+
+                      // 4. User Status & Cloud Backup Badge
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                        decoration: BoxDecoration(
+                          color: isDark
+                              ? Colors.white.withValues(alpha: 0.04)
+                              : const Color(0xffF8FAFC),
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(
+                            color: isDark
+                                ? Colors.white.withValues(alpha: 0.08)
+                                : Colors.grey.shade200,
+                          ),
+                        ),
+                        child: Row(
+                          children: [
+                            Container(
+                              width: 38,
+                              height: 38,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                gradient: LinearGradient(
+                                  colors: [
+                                    const Color(0xff10B981).withValues(alpha: 0.25),
+                                    const Color(0xff059669).withValues(alpha: 0.15),
+                                  ],
+                                ),
+                                border: Border.all(
+                                  color: const Color(0xff10B981).withValues(alpha: 0.4),
+                                ),
+                              ),
+                              child: const Icon(
+                                Icons.cloud_done_rounded,
+                                color: Color(0xff10B981),
+                                size: 19,
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    userName != null && userName.isNotEmpty
+                                        ? userName
+                                        : (userEmail ?? "Active Account"),
+                                    style: TextStyle(
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w700,
+                                      color: isDark ? Colors.white : const Color(0xff1E293B),
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                  const SizedBox(height: 2),
+                                  const Text(
+                                    "Transactions safely synced to cloud",
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w600,
+                                      color: Color(0xff10B981),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+
+                      const SizedBox(height: 24),
+
+                      // 5. Action Buttons (Stay In & Log Out)
+                      Row(
+                        children: [
+                          Expanded(
+                            child: OutlinedButton(
+                              onPressed: () => Navigator.pop(ctx),
+                              style: OutlinedButton.styleFrom(
+                                padding: const EdgeInsets.symmetric(vertical: 13),
+                                side: BorderSide(
+                                  color: isDark
+                                      ? Colors.white.withValues(alpha: 0.15)
+                                      : Colors.grey.shade300,
+                                  width: 1.2,
+                                ),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(16),
+                                ),
+                              ),
+                              child: Text(
+                                "Stay In",
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w700,
+                                  color: isDark ? Colors.grey.shade300 : const Color(0xff475569),
+                                ),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Container(
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(16),
+                                gradient: const LinearGradient(
+                                  colors: [Color(0xffEF4444), Color(0xffDC2626)],
+                                  begin: Alignment.topLeft,
+                                  end: Alignment.bottomRight,
+                                ),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: const Color(0xffEF4444).withValues(alpha: 0.4),
+                                    blurRadius: 14,
+                                    offset: const Offset(0, 4),
+                                  ),
+                                ],
+                              ),
+                              child: ElevatedButton(
+                                onPressed: () async {
+                                  Navigator.pop(ctx);
+                                  await authService.logout();
+                                  if (!context.mounted) return;
+                                  Navigator.pushAndRemoveUntil(
+                                    context,
+                                    MaterialPageRoute(builder: (_) => const SplashScreen()),
+                                    (route) => false,
+                                  );
+                                },
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Colors.transparent,
+                                  shadowColor: Colors.transparent,
+                                  padding: const EdgeInsets.symmetric(vertical: 13),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(16),
+                                  ),
+                                ),
+                                child: const Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Icon(Icons.logout_rounded, color: Colors.white, size: 17),
+                                    SizedBox(width: 6),
+                                    Text(
+                                      "Log Out",
+                                      style: TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w800,
+                                        letterSpacing: 0.3,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
                 ),
               ),
-              const SizedBox(width: 12),
-              Text(
-                "Log Out",
-                style: TextStyle(
-                  fontWeight: FontWeight.w800,
-                  fontSize: 18,
-                  color: isDark ? Colors.white : const Color(0xff1E293B),
-                ),
-              ),
-            ],
-          ),
-          content: Text(
-            "Are you sure you want to log out of your account? You will need to log back in to access your transactions.",
-            style: TextStyle(
-              fontSize: 14,
-              height: 1.4,
-              color: isDark ? Colors.grey.shade300 : const Color(0xff475569),
             ),
           ),
-          actionsPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(ctx),
-              child: Text(
-                "Cancel",
-                style: TextStyle(
-                  fontWeight: FontWeight.w600,
-                  color: isDark ? Colors.grey.shade400 : Colors.grey.shade600,
-                ),
-              ),
-            ),
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xffEF4444),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                elevation: 0,
-                padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
-              ),
-              onPressed: () async {
-                Navigator.pop(ctx);
-                await authService.logout();
-                if (!context.mounted) return;
-                Navigator.pushAndRemoveUntil(
-                  context,
-                  MaterialPageRoute(builder: (_) => const SplashScreen()),
-                  (route) => false,
-                );
-              },
-              child: const Text(
-                "Log Out",
-                style: TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-            ),
-          ],
         );
       },
     );
   }
 
   void _showDeleteDialog(BuildContext dialogContext) {
-    showDialog(
+    final isDark = Theme.of(dialogContext).brightness == Brightness.dark;
+
+    showGeneralDialog(
       context: dialogContext,
-      builder: (ctx) {
-        return AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-          title: const Row(
-            children: [
-              Icon(Icons.warning_amber_rounded, color: Colors.redAccent, size: 28),
-              SizedBox(width: 8),
-              Text("Delete Account", style: TextStyle(fontWeight: FontWeight.w800)),
-            ],
+      barrierDismissible: true,
+      barrierLabel: "Dismiss",
+      barrierColor: Colors.black.withValues(alpha: 0.65),
+      transitionDuration: const Duration(milliseconds: 250),
+      pageBuilder: (ctx, anim1, anim2) => const SizedBox(),
+      transitionBuilder: (ctx, anim, secondaryAnim, child) {
+        final curvedAnim = CurvedAnimation(
+          parent: anim,
+          curve: Curves.easeOutBack,
+        );
+        return BackdropFilter(
+          filter: ImageFilter.blur(
+            sigmaX: 8 * anim.value,
+            sigmaY: 8 * anim.value,
           ),
-          content: const Text(
-            "Are you sure you want to delete your account?\n\nAll your expense and income records will be permanently removed. This action cannot be undone.",
-            style: TextStyle(fontSize: 14, height: 1.4),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(ctx),
-              child: const Text("Cancel", style: TextStyle(fontWeight: FontWeight.w600)),
-            ),
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.redAccent,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          child: ScaleTransition(
+            scale: curvedAnim,
+            child: FadeTransition(
+              opacity: anim,
+              child: Dialog(
+                backgroundColor: isDark ? const Color(0xff1E293B) : Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(26),
+                  side: const BorderSide(
+                    color: Color(0xffEF4444),
+                    width: 1.2,
+                  ),
+                ),
+                elevation: 20,
+                insetPadding: const EdgeInsets.symmetric(horizontal: 22, vertical: 24),
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(22, 26, 22, 22),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Container(
+                        width: 64,
+                        height: 64,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          gradient: LinearGradient(
+                            colors: [
+                              const Color(0xffDC2626).withValues(alpha: 0.25),
+                              const Color(0xffEF4444).withValues(alpha: 0.1),
+                            ],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: const Color(0xffDC2626).withValues(alpha: 0.3),
+                              blurRadius: 20,
+                              spreadRadius: 2,
+                            ),
+                          ],
+                        ),
+                        child: const Icon(
+                          Icons.warning_amber_rounded,
+                          color: Color(0xffDC2626),
+                          size: 34,
+                        ),
+                      ),
+                      const SizedBox(height: 18),
+                      Text(
+                        "Delete Account?",
+                        style: TextStyle(
+                          fontSize: 21,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: -0.3,
+                          color: isDark ? Colors.white : const Color(0xff0F172A),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      Container(
+                        padding: const EdgeInsets.all(14),
+                        decoration: BoxDecoration(
+                          color: const Color(0xffEF4444).withValues(alpha: 0.08),
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(
+                            color: const Color(0xffEF4444).withValues(alpha: 0.2),
+                          ),
+                        ),
+                        child: Column(
+                          children: [
+                            Row(
+                              children: [
+                                const Icon(Icons.delete_sweep_rounded, color: Color(0xffEF4444), size: 20),
+                                const SizedBox(width: 10),
+                                Expanded(
+                                  child: Text(
+                                    "All transaction history, budgets, and cloud records will be permanently erased.",
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w600,
+                                      color: isDark ? Colors.white70 : const Color(0xff991B1B),
+                                      height: 1.35,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 10),
+                            Row(
+                              children: [
+                                const Icon(Icons.lock_reset_rounded, color: Color(0xffEF4444), size: 20),
+                                const SizedBox(width: 10),
+                                Expanded(
+                                  child: Text(
+                                    "This action is immediate and completely irreversible.",
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w600,
+                                      color: isDark ? Colors.white70 : const Color(0xff991B1B),
+                                      height: 1.35,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 22),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: OutlinedButton(
+                              onPressed: () => Navigator.pop(ctx),
+                              style: OutlinedButton.styleFrom(
+                                padding: const EdgeInsets.symmetric(vertical: 14),
+                                side: BorderSide(
+                                  color: isDark ? Colors.white24 : const Color(0xffCBD5E1),
+                                ),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(14),
+                                ),
+                              ),
+                              child: Text(
+                                "Keep Account",
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w700,
+                                  color: isDark ? Colors.white70 : const Color(0xff475569),
+                                ),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Container(
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(14),
+                                gradient: const LinearGradient(
+                                  colors: [Color(0xffDC2626), Color(0xffB91C1C)],
+                                ),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: const Color(0xffDC2626).withValues(alpha: 0.35),
+                                    blurRadius: 10,
+                                    offset: const Offset(0, 4),
+                                  ),
+                                ],
+                              ),
+                              child: ElevatedButton.icon(
+                                onPressed: () async {
+                                  Navigator.pop(ctx);
+                                  await deleteAccount();
+                                },
+                                icon: const Icon(Icons.delete_forever_rounded, size: 18, color: Colors.white),
+                                label: const Text(
+                                  "Delete Forever",
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w700,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Colors.transparent,
+                                  shadowColor: Colors.transparent,
+                                  padding: const EdgeInsets.symmetric(vertical: 14),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(14),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
               ),
-              onPressed: () async {
-                Navigator.pop(ctx);
-                await deleteAccount();
-              },
-              child: const Text("Delete Account", style: TextStyle(color: Colors.white)),
             ),
-          ],
+          ),
         );
       },
     );

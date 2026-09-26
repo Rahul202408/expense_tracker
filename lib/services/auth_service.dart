@@ -14,11 +14,30 @@ class AuthService {
   static const String _prefUserUid = "logged_user_uid";
   static const String _prefUserEmail = "logged_user_email";
 
+  /// Synchronous memory cache of the active session UID & Email for immediate startup access
+  static String? cachedUid;
+  static String? cachedEmail;
+
   User? get currentUser => _auth.currentUser;
+
+  /// Loads cached session from SharedPreferences on app launch
+  static Future<void> initCachedSession() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final bool isLoggedIn = prefs.getBool(_prefIsLoggedIn) ?? false;
+      if (isLoggedIn) {
+        cachedUid = prefs.getString(_prefUserUid);
+        cachedEmail = prefs.getString(_prefUserEmail);
+      }
+    } catch (_) {}
+  }
 
   /// Records a successful login or signup session in persistent local storage
   Future<void> recordUserLoginSession(User user) async {
     try {
+      cachedUid = user.uid;
+      cachedEmail = user.email;
+
       final prefs = await SharedPreferences.getInstance();
       final now = DateTime.now().millisecondsSinceEpoch;
       await prefs.setBool(_prefIsLoggedIn, true);
@@ -44,43 +63,40 @@ class AuthService {
     } catch (_) {}
   }
 
-  /// Checks if the user's login session is valid:
-  /// - User must be marked as logged in
-  /// - If user has not used the app for >= 30 days (1 month), session expires
-  /// - Otherwise, refreshes the active timestamp and returns true
+  /// Checks if the user has an active, valid authentication session.
+  /// Prioritizes FirebaseAuth's persistent credentials and auto-syncs local session.
   Future<bool> isSessionValid() async {
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final bool isLoggedIn = prefs.getBool(_prefIsLoggedIn) ?? false;
-      if (!isLoggedIn) return false;
-
-      final int? lastActiveMs = prefs.getInt(_prefLastActiveTime);
-      if (lastActiveMs == null) {
+      final user = _auth.currentUser;
+      if (user != null) {
+        // Active Firebase user confirmed - refresh local persistent session state
+        await recordUserLoginSession(user);
         await updateLastActiveTime();
         return true;
       }
 
-      final lastActiveDate = DateTime.fromMillisecondsSinceEpoch(lastActiveMs);
-      final daysSinceLastActive = DateTime.now().difference(lastActiveDate).inDays;
-
-      // Inactivity threshold: 30 days (1 month)
-      if (daysSinceLastActive >= 30) {
-        // Session expired due to 1 month inactivity
-        await logout();
-        return false;
-      }
-
-      // App used within 30 days: keep session alive & refresh active time
-      await updateLastActiveTime();
-      return true;
+      final prefs = await SharedPreferences.getInstance();
+      final bool isLoggedIn = prefs.getBool(_prefIsLoggedIn) ?? false;
+      final String? savedUid = prefs.getString(_prefUserUid) ?? cachedUid;
+      return isLoggedIn && savedUid != null && savedUid.isNotEmpty;
     } catch (_) {
-      return false;
+      return _auth.currentUser != null || (cachedUid != null && cachedUid!.isNotEmpty);
     }
   }
 
-  Future<DocumentSnapshot<Map<String, dynamic>>> getUserData() async {
-    final uid = FirebaseAuth.instance.currentUser!.uid;
-    return FirebaseFirestore.instance.collection('users').doc(uid).get();
+  Future<DocumentSnapshot<Map<String, dynamic>>?> getUserData() async {
+    User? user = _auth.currentUser;
+    if (user == null) {
+      try {
+        user = await _auth.authStateChanges().firstWhere((u) => u != null).timeout(
+          const Duration(seconds: 2),
+          onTimeout: () => null,
+        );
+      } catch (_) {}
+    }
+    final uid = user?.uid ?? _auth.currentUser?.uid ?? cachedUid;
+    if (uid == null) return null;
+    return _firestore.collection('users').doc(uid).get();
   }
 
   Future<String?> signUp({
@@ -117,6 +133,8 @@ class AuthService {
           "currencyCode": currencyCode,
           "createdAt": FieldValue.serverTimestamp(),
         });
+
+        await recordUserLoginSession(user);
       }
 
       return null;
@@ -149,10 +167,14 @@ class AuthService {
     required String password,
   }) async {
     try {
-      await _auth.signInWithEmailAndPassword(
+      final credential = await _auth.signInWithEmailAndPassword(
         email: email,
         password: password,
       );
+
+      if (credential.user != null) {
+        await recordUserLoginSession(credential.user!);
+      }
 
       return null;
     } on FirebaseAuthException catch (e) {
@@ -219,6 +241,8 @@ class AuthService {
             "createdAt": FieldValue.serverTimestamp(),
           });
         }
+
+        await recordUserLoginSession(user);
       }
 
       return null;
@@ -230,6 +254,9 @@ class AuthService {
   }
 
   Future<void> logout() async {
+    cachedUid = null;
+    cachedEmail = null;
+
     try {
       await _auth.signOut();
     } catch (_) {}

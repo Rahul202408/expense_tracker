@@ -6,11 +6,13 @@ import '../../../../widgets/three_d_tilt_card.dart';
 class ExpensePieChart extends StatefulWidget {
   final Map<String, double> categoryData;
   final String? currencySymbol;
+  final bool isExpense;
 
   const ExpensePieChart({
     super.key,
     required this.categoryData,
     this.currencySymbol,
+    this.isExpense = true,
   });
 
   @override
@@ -59,7 +61,7 @@ class _ExpensePieChartState extends State<ExpensePieChart> {
       (sum, val) => sum + val,
     );
 
-    String centerLabel = "Total Expense";
+    String centerLabel = widget.isExpense ? "Total Expense" : "Total Income";
     String centerValue = "$symbol${totalSum.toStringAsFixed(0)}";
     String centerSubText = "${entries.length} Categories";
 

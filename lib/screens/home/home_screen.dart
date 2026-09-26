@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'dart:ui';
 import 'package:provider/provider.dart';
 
 import 'widgets/balance_card.dart';
@@ -32,6 +33,206 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   final TransactionService _transactionService = TransactionService();
   final DashboardService _dashboardService = DashboardService();
+
+  Future<bool> _showDeleteConfirmDialog(
+    BuildContext context,
+    String title,
+    bool isDark,
+  ) async {
+    final result = await showGeneralDialog<bool>(
+      context: context,
+      barrierDismissible: true,
+      barrierLabel: "Dismiss",
+      barrierColor: Colors.black.withValues(alpha: 0.55),
+      transitionDuration: const Duration(milliseconds: 250),
+      pageBuilder: (ctx, anim1, anim2) => const SizedBox(),
+      transitionBuilder: (ctx, anim, secondaryAnim, child) {
+        final curvedAnim = CurvedAnimation(
+          parent: anim,
+          curve: Curves.easeOutBack,
+        );
+        return BackdropFilter(
+          filter: ImageFilter.blur(
+            sigmaX: 8 * anim.value,
+            sigmaY: 8 * anim.value,
+          ),
+          child: ScaleTransition(
+            scale: curvedAnim,
+            child: FadeTransition(
+              opacity: anim,
+              child: Dialog(
+                backgroundColor: isDark ? const Color(0xff1E293B) : Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(26),
+                  side: BorderSide(
+                    color: isDark ? Colors.white10 : Colors.black.withValues(alpha: 0.05),
+                    width: 1,
+                  ),
+                ),
+                elevation: 16,
+                insetPadding: const EdgeInsets.symmetric(horizontal: 24),
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(22, 26, 22, 22),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Container(
+                        width: 62,
+                        height: 62,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          gradient: LinearGradient(
+                            colors: [
+                              const Color(0xffEF4444).withValues(alpha: 0.22),
+                              const Color(0xffF43F5E).withValues(alpha: 0.08),
+                            ],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: const Color(0xffEF4444).withValues(alpha: 0.25),
+                              blurRadius: 18,
+                              spreadRadius: 2,
+                            ),
+                          ],
+                        ),
+                        child: const Icon(
+                          Icons.delete_forever_rounded,
+                          color: Color(0xffEF4444),
+                          size: 32,
+                        ),
+                      ),
+                      const SizedBox(height: 18),
+                      Text(
+                        "Delete Transaction?",
+                        style: TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: -0.3,
+                          color: isDark ? Colors.white : const Color(0xff0F172A),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                        decoration: BoxDecoration(
+                          color: isDark ? const Color(0xff0F172A) : const Color(0xffF8FAFC),
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(
+                            color: isDark ? Colors.white10 : const Color(0xffE2E8F0),
+                          ),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(
+                              Icons.receipt_long_rounded,
+                              size: 18,
+                              color: isDark ? Colors.white70 : const Color(0xff64748B),
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Text(
+                                title,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  fontWeight: FontWeight.w700,
+                                  fontSize: 14,
+                                  color: isDark ? Colors.white : const Color(0xff1E293B),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      Text(
+                        "This entry will be permanently removed from your records.",
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: isDark ? Colors.white60 : const Color(0xff64748B),
+                          height: 1.4,
+                        ),
+                      ),
+                      const SizedBox(height: 22),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: OutlinedButton(
+                              onPressed: () => Navigator.pop(ctx, false),
+                              style: OutlinedButton.styleFrom(
+                                padding: const EdgeInsets.symmetric(vertical: 14),
+                                side: BorderSide(
+                                  color: isDark ? Colors.white24 : const Color(0xffCBD5E1),
+                                ),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(14),
+                                ),
+                              ),
+                              child: Text(
+                                "Cancel",
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w700,
+                                  color: isDark ? Colors.white70 : const Color(0xff475569),
+                                ),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Container(
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(14),
+                                gradient: const LinearGradient(
+                                  colors: [Color(0xffEF4444), Color(0xffDC2626)],
+                                ),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: const Color(0xffEF4444).withValues(alpha: 0.35),
+                                    blurRadius: 10,
+                                    offset: const Offset(0, 4),
+                                  ),
+                                ],
+                              ),
+                              child: ElevatedButton.icon(
+                                onPressed: () => Navigator.pop(ctx, true),
+                                icon: const Icon(Icons.delete_rounded, size: 18, color: Colors.white),
+                                label: const Text(
+                                  "Delete",
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w700,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Colors.transparent,
+                                  shadowColor: Colors.transparent,
+                                  padding: const EdgeInsets.symmetric(vertical: 14),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(14),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        );
+      },
+    );
+    return result ?? false;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -207,6 +408,29 @@ class _HomeScreenState extends State<HomeScreen> {
 
                                 final tileWidget = Dismissible(
                                   key: Key(transaction.id),
+                                  background: Container(
+                                    margin: const EdgeInsets.symmetric(
+                                        horizontal: 20, vertical: 7),
+                                    decoration: BoxDecoration(
+                                      color: Colors.red.shade400,
+                                      borderRadius: BorderRadius.circular(22),
+                                    ),
+                                    alignment: Alignment.centerRight,
+                                    padding: const EdgeInsets.only(right: 25),
+                                    child: const Icon(
+                                      Icons.delete_rounded,
+                                      color: Colors.white,
+                                      size: 28,
+                                    ),
+                                  ),
+                                  direction: DismissDirection.endToStart,
+                                  confirmDismiss: (direction) async {
+                                    return await _showDeleteConfirmDialog(
+                                      context,
+                                      transaction.title,
+                                      isDark,
+                                    );
+                                  },
                                   onDismissed: (_) async {
                                     await _transactionService.deleteTransaction(
                                       transaction.id,
@@ -216,6 +440,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                       ScaffoldMessenger.of(context).showSnackBar(
                                         const SnackBar(
                                           content: Text("Transaction Deleted"),
+                                          backgroundColor: Colors.redAccent,
                                         ),
                                       );
                                     }

@@ -29,6 +29,15 @@ class NotificationService {
     importance: Importance.high,
   );
 
+  static const AndroidNotificationChannel _dailyReminderChannel = AndroidNotificationChannel(
+    'daily_reminder_channel',
+    'Daily Expense Reminders',
+    description: 'Daily reminders to log your expenses and review budgets.',
+    importance: Importance.high,
+    playSound: true,
+    enableVibration: true,
+  );
+
   static const String _keyDailyEnabled = 'pref_daily_reminder_enabled';
   static const String _keyDailyHour = 'pref_daily_reminder_hour';
   static const String _keyDailyMinute = 'pref_daily_reminder_minute';
@@ -42,11 +51,23 @@ class NotificationService {
     // Initialize Time Zones for Daily Scheduled Notifications
     tz.initializeTimeZones();
     try {
-      final String timeZoneName = await FlutterTimezone.getLocalTimezone();
+      String timeZoneName = await FlutterTimezone.getLocalTimezone();
+      if (timeZoneName == "Asia/Calcutta") timeZoneName = "Asia/Kolkata";
       tz.setLocalLocation(tz.getLocation(timeZoneName));
       debugPrint("Local Timezone set to: $timeZoneName");
     } catch (e) {
-      debugPrint("Could not set local timezone: $e");
+      debugPrint("Could not set local timezone directly: $e");
+      try {
+        // Fallback: match by device offset (e.g. +5:30 for India)
+        final offset = DateTime.now().timeZoneOffset;
+        for (final loc in tz.timeZoneDatabase.locations.values) {
+          if (loc.currentTimeZone.offset == offset.inMilliseconds) {
+            tz.setLocalLocation(loc);
+            debugPrint("Fallback timezone matched by offset: ${loc.name}");
+            break;
+          }
+        }
+      } catch (_) {}
     }
 
     // 1. Request FCM Permission
@@ -90,14 +111,18 @@ class NotificationService {
       },
     );
 
-    // 5. Create Android Notification Channel
+    // 5. Create Android Notification Channels & Request Permissions
     final AndroidFlutterLocalNotificationsPlugin? androidImplementation =
         _localNotifications.resolvePlatformSpecificImplementation<
             AndroidFlutterLocalNotificationsPlugin>();
 
     if (androidImplementation != null) {
       await androidImplementation.createNotificationChannel(_channel);
+      await androidImplementation.createNotificationChannel(_dailyReminderChannel);
       await androidImplementation.requestNotificationsPermission();
+      try {
+        await androidImplementation.requestExactAlarmsPermission();
+      } catch (_) {}
     }
 
     // 6. Get & Log FCM Token
@@ -155,7 +180,7 @@ class NotificationService {
 
   Future<TimeOfDay> getDailyReminderTime() async {
     final prefs = await SharedPreferences.getInstance();
-    final int hour = prefs.getInt(_keyDailyHour) ?? 20;
+    final int hour = prefs.getInt(_keyDailyHour) ?? 20; // Default 8:00 PM
     final int minute = prefs.getInt(_keyDailyMinute) ?? 0;
     return TimeOfDay(hour: hour, minute: minute);
   }
@@ -232,6 +257,8 @@ class NotificationService {
       importance: Importance.high,
       priority: Priority.high,
       icon: '@mipmap/ic_launcher',
+      playSound: true,
+      enableVibration: true,
     );
 
     const DarwinNotificationDetails iosDetails = DarwinNotificationDetails(
@@ -262,6 +289,9 @@ class NotificationService {
     String body = "Don't forget to track your daily expenses today!",
   }) async {
     try {
+      // First cancel existing to prevent any duplicates or orphaned triggers
+      await _localNotifications.cancel(id: 1001);
+
       final tz.TZDateTime now = tz.TZDateTime.now(tz.local);
       tz.TZDateTime scheduledDate = tz.TZDateTime(
         tz.local,
@@ -276,6 +306,20 @@ class NotificationService {
         scheduledDate = scheduledDate.add(const Duration(days: 1));
       }
 
+      // Check if exact alarms can be scheduled on Android 12+
+      final AndroidFlutterLocalNotificationsPlugin? androidImplementation =
+          _localNotifications.resolvePlatformSpecificImplementation<
+              AndroidFlutterLocalNotificationsPlugin>();
+
+      AndroidScheduleMode scheduleMode = AndroidScheduleMode.inexactAllowWhileIdle;
+      try {
+        final bool? canExact =
+            await androidImplementation?.canScheduleExactNotifications();
+        if (canExact == true) {
+          scheduleMode = AndroidScheduleMode.exactAllowWhileIdle;
+        }
+      } catch (_) {}
+
       await _localNotifications.zonedSchedule(
         id: 1001,
         title: title,
@@ -283,12 +327,14 @@ class NotificationService {
         scheduledDate: scheduledDate,
         notificationDetails: NotificationDetails(
           android: AndroidNotificationDetails(
-            _channel.id,
-            _channel.name,
-            channelDescription: _channel.description,
+            _dailyReminderChannel.id,
+            _dailyReminderChannel.name,
+            channelDescription: _dailyReminderChannel.description,
             importance: Importance.high,
             priority: Priority.high,
             icon: '@mipmap/ic_launcher',
+            playSound: true,
+            enableVibration: true,
           ),
           iOS: const DarwinNotificationDetails(
             presentAlert: true,
@@ -296,14 +342,25 @@ class NotificationService {
             presentSound: true,
           ),
         ),
-        androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+        androidScheduleMode: scheduleMode,
         matchDateTimeComponents: DateTimeComponents.time,
       );
 
-      debugPrint("Daily notification scheduled for $hour:$minute every day.");
+      debugPrint(
+        "Daily notification successfully scheduled for ${hour.toString().padLeft(2, '0')}:${minute.toString().padLeft(2, '0')} daily (Mode: $scheduleMode, Next: $scheduledDate)",
+      );
     } catch (e) {
       debugPrint("Error scheduling daily notification: $e");
     }
+  }
+
+  /// Send an instant test reminder notification so the user can verify immediately
+  Future<void> sendTestNotification() async {
+    await showLocalNotification(
+      id: 9999,
+      title: "Daily Expense Reminder 📝 (Test)",
+      body: "Great! Your 8:00 PM daily reminder is working properly. Don't forget to track your expenses!",
+    );
   }
 
   /// Cancel all scheduled daily notifications if needed
