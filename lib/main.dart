@@ -19,21 +19,62 @@ import 'widgets/no_internet_banner.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await AuthService.initCachedSession();
+
+  // 1. Initialize local session cache safely
+  try {
+    await AuthService.initCachedSession();
+  } catch (e) {
+    debugPrint("AuthService initCachedSession note: $e");
+  }
+
+  // 2. Load .env environment variables safely
   try {
     await dotenv.load(fileName: ".env");
   } catch (e) {
     debugPrint("dotenv load note: $e");
   }
-  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
-  FirebaseAnalyticsService().logAppOpen();
 
-  // Initialize ads & notifications in parallel without blocking initial UI frame
-  AdService.initialize().then((_) {
-    AppOpenAdManager().initialize();
-  });
-  NotificationService().init();
+  // 3. Initialize Firebase safely with robust fallback to native credentials
+  try {
+    await Firebase.initializeApp(
+      options: DefaultFirebaseOptions.currentPlatform,
+    );
+  } catch (e) {
+    debugPrint("Firebase init with options note: $e");
+    try {
+      await Firebase.initializeApp();
+    } catch (e2) {
+      debugPrint("Firebase default init note: $e2");
+    }
+  }
 
+  // 4. Safely log app open
+  try {
+    FirebaseAnalyticsService().logAppOpen();
+  } catch (e) {
+    debugPrint("Analytics logAppOpen note: $e");
+  }
+
+  // 5. Initialize ads & notifications in parallel without blocking initial UI frame
+  try {
+    AdService.initialize().then((_) {
+      AppOpenAdManager().initialize();
+    }).catchError((e) {
+      debugPrint("AdService init note: $e");
+    });
+  } catch (e) {
+    debugPrint("AdService launch note: $e");
+  }
+
+  try {
+    NotificationService().init().catchError((e) {
+      debugPrint("NotificationService init note: $e");
+    });
+  } catch (e) {
+    debugPrint("NotificationService launch note: $e");
+  }
+
+  // 6. Guarantee runApp always executes to display Flutter UI
   runApp(
     MultiProvider(
       providers: [

@@ -10,8 +10,8 @@ class AppUpdateService {
   AppUpdateService._internal();
 
   /// Current Installed App Version
-  static const int currentBuildNumber = 27;
-  static const String currentVersionName = "1.2.7";
+  static const int currentBuildNumber = 30;
+  static const String currentVersionName = "1.3.0";
 
   static const String _prefKeyLastDismissedUpdate = "update_prompt_last_dismissed_ms";
   static const String _prefKeyDismissedVersionCode = "update_prompt_dismissed_version_code";

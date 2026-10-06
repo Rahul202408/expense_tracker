@@ -1,21 +1,40 @@
 import 'package:firebase_analytics/firebase_analytics.dart';
-import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
 
 class FirebaseAnalyticsService {
   static final FirebaseAnalyticsService _instance = FirebaseAnalyticsService._internal();
   factory FirebaseAnalyticsService() => _instance;
   FirebaseAnalyticsService._internal();
 
-  final FirebaseAnalytics _analytics = FirebaseAnalytics.instance;
+  FirebaseAnalytics? _analytics;
+  NavigatorObserver? _observer;
 
-  FirebaseAnalytics get analytics => _analytics;
+  FirebaseAnalytics? get analytics {
+    try {
+      _analytics ??= FirebaseAnalytics.instance;
+      return _analytics;
+    } catch (e) {
+      debugPrint("FirebaseAnalytics instance note: $e");
+      return null;
+    }
+  }
 
-  FirebaseAnalyticsObserver get observer =>
-      FirebaseAnalyticsObserver(analytics: _analytics);
+  NavigatorObserver get observer {
+    try {
+      final a = analytics;
+      if (a != null) {
+        _observer ??= FirebaseAnalyticsObserver(analytics: a);
+        return _observer!;
+      }
+    } catch (e) {
+      debugPrint("FirebaseAnalytics observer note: $e");
+    }
+    return RouteObserver<ModalRoute<dynamic>>();
+  }
 
   Future<void> logAppOpen() async {
     try {
-      await _analytics.logAppOpen();
+      await analytics?.logAppOpen();
     } catch (e) {
       debugPrint("Analytics logAppOpen error: $e");
     }
@@ -23,7 +42,7 @@ class FirebaseAnalyticsService {
 
   Future<void> logScreenView(String screenName) async {
     try {
-      await _analytics.logScreenView(screenName: screenName);
+      await analytics?.logScreenView(screenName: screenName);
     } catch (e) {
       debugPrint("Analytics logScreenView error: $e");
     }
@@ -31,7 +50,7 @@ class FirebaseAnalyticsService {
 
   Future<void> logLogin(String method) async {
     try {
-      await _analytics.logLogin(loginMethod: method);
+      await analytics?.logLogin(loginMethod: method);
     } catch (e) {
       debugPrint("Analytics logLogin error: $e");
     }
@@ -39,7 +58,7 @@ class FirebaseAnalyticsService {
 
   Future<void> logSignUp(String method) async {
     try {
-      await _analytics.logSignUp(signUpMethod: method);
+      await analytics?.logSignUp(signUpMethod: method);
     } catch (e) {
       debugPrint("Analytics logSignUp error: $e");
     }
@@ -51,7 +70,7 @@ class FirebaseAnalyticsService {
     required bool isExpense,
   }) async {
     try {
-      await _analytics.logEvent(
+      await analytics?.logEvent(
         name: isExpense ? 'expense_logged' : 'income_logged',
         parameters: {
           'category': category,
@@ -66,7 +85,7 @@ class FirebaseAnalyticsService {
 
   Future<void> logProPlanView() async {
     try {
-      await _analytics.logEvent(name: 'pro_screen_viewed');
+      await analytics?.logEvent(name: 'pro_screen_viewed');
     } catch (e) {
       debugPrint("Analytics logProPlanView error: $e");
     }
@@ -74,7 +93,7 @@ class FirebaseAnalyticsService {
 
   Future<void> logProPurchaseStarted(String planId) async {
     try {
-      await _analytics.logEvent(
+      await analytics?.logEvent(
         name: 'pro_purchase_started',
         parameters: {'plan_id': planId},
       );
@@ -85,7 +104,7 @@ class FirebaseAnalyticsService {
 
   Future<void> logProPurchaseSuccess(String planId) async {
     try {
-      await _analytics.logEvent(
+      await analytics?.logEvent(
         name: 'pro_purchase_success',
         parameters: {'plan_id': planId},
       );
@@ -96,7 +115,7 @@ class FirebaseAnalyticsService {
 
   Future<void> logExportReport(String format) async {
     try {
-      await _analytics.logEvent(
+      await analytics?.logEvent(
         name: 'report_exported',
         parameters: {'format': format},
       );
@@ -107,7 +126,7 @@ class FirebaseAnalyticsService {
 
   Future<void> setUserId(String? userId) async {
     try {
-      await _analytics.setUserId(id: userId);
+      await analytics?.setUserId(id: userId);
     } catch (e) {
       debugPrint("Analytics setUserId error: $e");
     }

@@ -491,7 +491,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       ),
                       const SizedBox(height: 8),
                       Text(
-                        "Expense Tracker • Version 1.2.7 (Build 27)",
+                        "Expense Tracker • Version 1.3.0 (Build 30)",
                         style: TextStyle(
                           fontSize: 11,
                           fontWeight: FontWeight.w500,
@@ -1345,7 +1345,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             Icon(Icons.verified_rounded, size: 14, color: Color(0xff10B981)),
                             SizedBox(width: 5),
                             Text(
-                              "Version 1.2.7 (Build 27)",
+                              "Version 1.3.0 (Build 30)",
                               style: TextStyle(
                                 fontWeight: FontWeight.w800,
                                 color: Color(0xff10B981),

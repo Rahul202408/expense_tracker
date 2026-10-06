@@ -1,9 +1,36 @@
 # ==============================================================================
-# Flutter & Application Rules
+# Android Core Components & ContentProviders (Fixes ClassNotFoundException on cold boot)
 # ==============================================================================
--keep class com.trtech.expense_tracker.MainActivity { *; }
+-keep public class * extends android.app.Activity
+-keep public class * extends android.app.Application
+-keep public class * extends android.app.Service
+-keep public class * extends android.content.BroadcastReceiver
+-keep public class * extends android.content.ContentProvider { *; }
 
+# Firebase SDK & Plugins (Explicitly keep FlutterFirebaseMessagingInitProvider)
+-keep class com.google.firebase.** { *; }
+-keep class io.flutter.plugins.firebase.** { *; }
+-keep class io.flutter.plugins.firebase.messaging.** { *; }
+-keep class io.flutter.plugins.firebase.core.** { *; }
+-keep class io.flutter.plugins.firebase.auth.** { *; }
+-keep class io.flutter.plugins.firebase.firestore.** { *; }
+-keep class io.flutter.plugins.firebase.analytics.** { *; }
+
+# Google Play Billing & In-App Purchase
+-keep class com.android.billingclient.** { *; }
+-keep class io.flutter.plugins.inapppurchase.** { *; }
+
+# Google Mobile Ads (AdMob)
+-keep class com.google.android.gms.ads.** { *; }
+-keep class io.flutter.plugins.googlemobileads.** { *; }
+
+# Flutter Engine, Facade & Plugin Registrant
+-keep class com.trtech.expense_tracker.MainActivity { *; }
 -keep class io.flutter.facade.** { *; }
+-keep class io.flutter.** { *; }
+-keep class io.flutter.plugins.** { *; }
+-keep class io.flutter.embedding.** { *; }
+-keep class io.flutter.plugin.** { *; }
 -keepclassmembers class * {
     @androidx.annotation.Keep *;
 }
@@ -15,9 +42,17 @@
     native <methods>;
 }
 
-# Flutter Local Notifications
+# Flutter Local Notifications, WorkManager & Biometrics
 -keep class com.dexterous.flutterlocalnotifications.** { *; }
 -dontwarn com.dexterous.flutterlocalnotifications.**
+-keep class io.flutter.plugins.localauth.** { *; }
+-keep class androidx.biometric.** { *; }
+-keep class androidx.work.** { *; }
+-keep class androidx.activity.** { *; }
+-keep class androidx.fragment.app.** { *; }
+-dontwarn androidx.activity.**
+-dontwarn androidx.fragment.app.**
+
 
 # Attributes & Serialization
 -keepattributes *Annotation*
@@ -27,12 +62,7 @@
 -dontwarn java.lang.invoke.**
 -dontwarn javax.annotation.**
 
-# ==============================================================================
-# Firebase, Google Play Services, AdMob & Billing
-# NOTE: These official SDKs bundle their own Consumer Proguard Rules inside their AARs.
-# We intentionally do NOT use blanket '-keep class com.google.** { *; }' so R8 can
-# safely optimize and obfuscate internal code, maintaining DEX obfuscation well above 25%.
-# ==============================================================================
+# Suppress harmless third-party build warnings
 -dontwarn com.google.firebase.**
 -dontwarn com.google.android.gms.**
 -dontwarn com.google.android.gms.ads.**

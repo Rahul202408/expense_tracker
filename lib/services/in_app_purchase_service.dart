@@ -17,8 +17,8 @@ class InAppPurchaseService {
   // Product IDs configured in Google Play Console
   static const String monthlyPlanId = 'pro_monthly';
   static const String yearlyPlanId = 'pro_yearly';
-  static const String lifetimePlanId = 'lifetime-buy';
-  static const String altLifetimePlanId = 'pro_lifetime';
+  static const String lifetimePlanId = 'pro_lifetime';
+  static const String altLifetimePlanId = 'lifetime-buy';
 
   static const Set<String> _productIds = {
     monthlyPlanId,
@@ -135,7 +135,13 @@ class InAppPurchaseService {
 
       ProductDetails? product;
       try {
-        product = _products.firstWhere((p) => p.id == productId);
+        if (productId == lifetimePlanId || productId == altLifetimePlanId) {
+          product = _products.firstWhere(
+            (p) => p.id == lifetimePlanId || p.id == altLifetimePlanId,
+          );
+        } else {
+          product = _products.firstWhere((p) => p.id == productId);
+        }
       } catch (_) {
         product = null;
       }
@@ -144,7 +150,13 @@ class InAppPurchaseService {
       if (product == null) {
         await fetchProducts();
         try {
-          product = _products.firstWhere((p) => p.id == productId);
+          if (productId == lifetimePlanId || productId == altLifetimePlanId) {
+            product = _products.firstWhere(
+              (p) => p.id == lifetimePlanId || p.id == altLifetimePlanId,
+            );
+          } else {
+            product = _products.firstWhere((p) => p.id == productId);
+          }
         } catch (_) {
           product = null;
         }
@@ -161,7 +173,7 @@ class InAppPurchaseService {
 
       PurchaseParam purchaseParam;
       if (product is GooglePlayProductDetails) {
-        if (productId == lifetimePlanId) {
+        if (product.id == lifetimePlanId || product.id == altLifetimePlanId) {
           // One-time non-consumable product
           purchaseParam = GooglePlayPurchaseParam(productDetails: product);
         } else {

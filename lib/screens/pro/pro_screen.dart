@@ -33,8 +33,18 @@ class _ProScreenState extends State<ProScreen> {
   String _getPriceForPlan(String planId, bool isIndia) {
     final products = InAppPurchaseService().products;
     try {
-      final prod = products.firstWhere((p) => p.id == planId);
-      if (prod.price.isNotEmpty) return prod.price;
+      if (planId == InAppPurchaseService.lifetimePlanId ||
+          planId == InAppPurchaseService.altLifetimePlanId) {
+        final prod = products.firstWhere(
+          (p) =>
+              p.id == InAppPurchaseService.lifetimePlanId ||
+              p.id == InAppPurchaseService.altLifetimePlanId,
+        );
+        if (prod.price.isNotEmpty) return prod.price;
+      } else {
+        final prod = products.firstWhere((p) => p.id == planId);
+        if (prod.price.isNotEmpty) return prod.price;
+      }
     } catch (_) {}
 
     if (isIndia) {
@@ -1111,6 +1121,7 @@ class _ProScreenState extends State<ProScreen> {
                     Row(
                       children: [
                         Expanded(
+                          flex: 2,
                           child: TextButton(
                             onPressed: () => Navigator.pop(dialogCtx),
                             style: TextButton.styleFrom(
@@ -1121,9 +1132,11 @@ class _ProScreenState extends State<ProScreen> {
                         ),
                         const SizedBox(width: 10),
                         Expanded(
+                          flex: 3,
                           child: ElevatedButton(
                             style: ElevatedButton.styleFrom(
                               backgroundColor: const Color(0xffF59E0B),
+                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 12),
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(12),
                               ),
@@ -1175,11 +1188,15 @@ class _ProScreenState extends State<ProScreen> {
                                       color: Colors.white,
                                     ),
                                   )
-                                : const Text(
-                                    "Retry Connection",
-                                    style: TextStyle(
-                                      color: Colors.black,
-                                      fontWeight: FontWeight.bold,
+                                : const FittedBox(
+                                    fit: BoxFit.scaleDown,
+                                    child: Text(
+                                      "Retry Connection",
+                                      maxLines: 1,
+                                      style: TextStyle(
+                                        color: Colors.black,
+                                        fontWeight: FontWeight.bold,
+                                      ),
                                     ),
                                   ),
                           ),

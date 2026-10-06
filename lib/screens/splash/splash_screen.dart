@@ -33,31 +33,46 @@ class _SplashScreenState extends State<SplashScreen>
   late Animation<double> _footerOpacityAnimation;
   late Animation<double> _progressAnimation;
   late Future<User?> _authRestoreFuture;
+  Timer? _splashTimer;
+  Timer? _fallbackTimer;
+  bool _hasNavigated = false;
 
   Future<User?> _resolveInitialUser() async {
     try {
-      if (FirebaseAuth.instance.currentUser != null) {
-        return FirebaseAuth.instance.currentUser;
-      }
+      final user = FirebaseAuth.instance.currentUser;
+      if (user != null) return user;
+
       return await FirebaseAuth.instance
           .authStateChanges()
           .firstWhere((u) => u != null)
           .timeout(
             const Duration(milliseconds: 3000),
-            onTimeout: () => FirebaseAuth.instance.currentUser,
+            onTimeout: () {
+              try {
+                return FirebaseAuth.instance.currentUser;
+              } catch (_) {
+                return null;
+              }
+            },
           );
     } catch (_) {
-      return FirebaseAuth.instance.currentUser;
+      try {
+        return FirebaseAuth.instance.currentUser;
+      } catch (_) {
+        return null;
+      }
     }
   }
 
   @override
   void initState() {
     super.initState();
-    AppOpenAdManager().setAdSuppressed(true);
+    try {
+      AppOpenAdManager().setAdSuppressed(true);
+    } catch (_) {}
     _authRestoreFuture = _resolveInitialUser();
 
-    // Main entrance animation controller - full 5.0 seconds duration
+    // Main entrance animation controller - full 5.0 seconds duration for seamless data loading
     _mainController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 5000),
@@ -131,46 +146,104 @@ class _SplashScreenState extends State<SplashScreen>
     _mainController.forward();
 
     // Allow full 5050ms for animations and parallel Firebase Auth restoration
-    Timer(const Duration(milliseconds: 5050), checkFirstLaunch);
+    _splashTimer = Timer(const Duration(milliseconds: 5050), checkFirstLaunch);
+
+    // Bulletproof fallback timer to ensure user NEVER gets stuck on splash screen
+    _fallbackTimer = Timer(const Duration(milliseconds: 6200), () {
+      if (!_hasNavigated && mounted) {
+        checkFirstLaunch();
+      }
+    });
   }
 
   Future<void> checkFirstLaunch() async {
-    // Register app cold launch count for contextual prompts and ad gating
-    await AppPromptService().registerLaunch();
+    if (_hasNavigated || !mounted) return;
+    _hasNavigated = true;
 
-    final prefs = await SharedPreferences.getInstance();
-    bool seen = prefs.getBool("onboarding") ?? false;
-    final bool isLocallyLoggedIn = prefs.getBool("is_user_logged_in") ?? false;
-    final String? savedUid = prefs.getString("logged_user_uid") ?? AuthService.cachedUid;
-    final authService = AuthService();
-
-    // Await the auth restoration future which began in parallel with splash animation
-    User? user = await _authRestoreFuture;
-    user ??= FirebaseAuth.instance.currentUser;
-
-    // Grace check: if user is not resolved yet, verify active persistent session
-    final bool hasValidSession = user != null ||
-        (isLocallyLoggedIn && savedUid != null && savedUid.isNotEmpty) ||
-        (await authService.isSessionValid());
-
-    if (!mounted) return;
-
-    // If active Firebase user or verified persistent local session exists, proceed into app / app lock
-    if (hasValidSession) {
-      if (user != null) {
-        await authService.recordUserLoginSession(user);
+    try {
+      // 1. Register launch for contextual prompts safely
+      try {
+        await AppPromptService().registerLaunch();
+      } catch (e) {
+        debugPrint("Splash registerLaunch note: $e");
       }
-      await authService.updateLastActiveTime();
 
-      final isLockEnabled = await SecurityService().isAppLockEnabled();
+      // 2. Read local state
+      final prefs = await SharedPreferences.getInstance();
+      final bool seen = prefs.getBool("onboarding") ?? false;
+      final bool isLocallyLoggedIn = prefs.getBool("is_user_logged_in") ?? false;
+      final String? savedUid = prefs.getString("logged_user_uid") ?? AuthService.cachedUid;
+      final authService = AuthService();
+
+      // 3. Resolve user auth
+      User? user;
+      try {
+        user = await _authRestoreFuture;
+      } catch (_) {}
+      try {
+        user ??= FirebaseAuth.instance.currentUser;
+      } catch (_) {}
+
+      // 4. Session verification
+      bool hasValidSession = false;
+      try {
+        hasValidSession = user != null ||
+            (isLocallyLoggedIn && savedUid != null && savedUid.isNotEmpty) ||
+            (await authService.isSessionValid());
+      } catch (_) {
+        hasValidSession = user != null || (savedUid != null && savedUid.isNotEmpty);
+      }
 
       if (!mounted) return;
 
-      if (isLockEnabled) {
+      // 5. Navigate to Home or Lock screen if session is valid
+      if (hasValidSession) {
+        try {
+          if (user != null) {
+            await authService.recordUserLoginSession(user);
+          }
+          await authService.updateLastActiveTime();
+        } catch (_) {}
+
+        bool isLockEnabled = false;
+        try {
+          isLockEnabled = await SecurityService().isAppLockEnabled();
+        } catch (_) {}
+
+        if (!mounted) return;
+
+        if (isLockEnabled) {
+          Navigator.pushReplacement(
+            context,
+            PageRouteBuilder(
+              pageBuilder: (_, __, ___) => const AppLockScreen(),
+              transitionsBuilder: (_, animation, __, child) =>
+                  FadeTransition(opacity: animation, child: child),
+              transitionDuration: const Duration(milliseconds: 400),
+            ),
+          );
+        } else {
+          Navigator.pushReplacement(
+            context,
+            PageRouteBuilder(
+              pageBuilder: (_, __, ___) => const MainScreen(),
+              transitionsBuilder: (_, animation, __, child) =>
+                  FadeTransition(opacity: animation, child: child),
+              transitionDuration: const Duration(milliseconds: 400),
+            ),
+          );
+        }
+        return;
+      }
+
+      if (!mounted) return;
+
+      // 6. Navigate to Onboarding or Login screen
+      if (!seen) {
         Navigator.pushReplacement(
           context,
           PageRouteBuilder(
-            pageBuilder: (_, __, ___) => const AppLockScreen(),
+            pageBuilder: (_, __, ___) => const OnboardingScreen(),
             transitionsBuilder: (_, animation, __, child) =>
                 FadeTransition(opacity: animation, child: child),
             transitionDuration: const Duration(milliseconds: 400),
@@ -180,30 +253,17 @@ class _SplashScreenState extends State<SplashScreen>
         Navigator.pushReplacement(
           context,
           PageRouteBuilder(
-            pageBuilder: (_, __, ___) => const MainScreen(),
+            pageBuilder: (_, __, ___) => const LoginScreen(),
             transitionsBuilder: (_, animation, __, child) =>
                 FadeTransition(opacity: animation, child: child),
             transitionDuration: const Duration(milliseconds: 400),
           ),
         );
       }
-      return;
-    }
-
-    if (!mounted) return;
-
-    // Navigate to onboarding or login screen ONLY if truly not authenticated
-    if (!seen) {
-      Navigator.pushReplacement(
-        context,
-        PageRouteBuilder(
-          pageBuilder: (_, __, ___) => const OnboardingScreen(),
-          transitionsBuilder: (_, animation, __, child) =>
-              FadeTransition(opacity: animation, child: child),
-          transitionDuration: const Duration(milliseconds: 400),
-        ),
-      );
-    } else {
+    } catch (e) {
+      debugPrint("Splash checkFirstLaunch safety fallback: $e");
+      if (!mounted) return;
+      // Fail-safe navigation: take user to LoginScreen so they are never stuck
       Navigator.pushReplacement(
         context,
         PageRouteBuilder(
@@ -218,6 +278,8 @@ class _SplashScreenState extends State<SplashScreen>
 
   @override
   void dispose() {
+    _splashTimer?.cancel();
+    _fallbackTimer?.cancel();
     _mainController.dispose();
     _pulseController.dispose();
     super.dispose();
@@ -548,7 +610,7 @@ class _SplashScreenState extends State<SplashScreen>
                           ),
                           const SizedBox(height: 4),
                           Text(
-                            "Version 1.2.7",
+                            "Version 1.3.0",
                             style: TextStyle(
                               fontSize: 10,
                               fontWeight: FontWeight.w600,
