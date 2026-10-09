@@ -1,11 +1,14 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../models/transaction_model.dart';
 import '../../services/transaction_service.dart';
+import '../../services/auth_service.dart';
 import '../../widgets/three_d_tilt_card.dart';
 import '../../providers/pro_provider.dart';
 import '../../providers/currency_provider.dart';
 import '../../services/firebase_analytics_service.dart';
+import '../auth/login_screen.dart';
 import '../pro/pro_screen.dart';
 
 class AddTransactionScreen extends StatefulWidget {
@@ -58,6 +61,11 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
     } else if (widget.initialIsExpense != null) {
       isExpense = widget.initialIsExpense!;
     }
+
+    // Proactively restore session in background if cold boot
+    if (FirebaseAuth.instance.currentUser == null) {
+      AuthService().trySilentGoogleSignIn();
+    }
   }
 
   @override
@@ -71,7 +79,7 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
     final picked = await showDatePicker(
       context: context,
       initialDate: selectedDate,
-      firstDate: DateTime(2024),
+      firstDate: DateTime(2020),
       lastDate: DateTime(2100),
     );
 
@@ -87,7 +95,8 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
 
     try {
       final title = titleController.text.trim();
-      final amount = double.parse(amountController.text.trim());
+      final amountCleaned = amountController.text.trim().replaceAll(',', '');
+      final amount = double.parse(amountCleaned);
 
       if (widget.transaction == null) {
         final transaction = TransactionModel(
@@ -130,10 +139,205 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
     } catch (e) {
       if (!mounted) return;
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Error: $e"), backgroundColor: Colors.red),
-      );
+      final errorStr = e.toString().toLowerCase();
+      final isAuthError = errorStr.contains("authentication required") ||
+          errorStr.contains("permission-denied") ||
+          errorStr.contains("user authentication");
+
+      if (isAuthError) {
+        // 1. Attempt immediate silent Google recovery
+        final restoredUser = await AuthService().trySilentGoogleSignIn();
+        if (restoredUser != null && mounted) {
+          try {
+            final title = titleController.text.trim();
+            final amountCleaned = amountController.text.trim().replaceAll(',', '');
+            final amount = double.parse(amountCleaned);
+
+            if (widget.transaction == null) {
+              final transaction = TransactionModel(
+                id: '',
+                title: title,
+                category: selectedCategory,
+                amount: amount,
+                isExpense: isExpense,
+                date: selectedDate,
+              );
+              await _transactionService.addTransaction(transaction);
+            } else {
+              final updatedTransaction = TransactionModel(
+                id: widget.transaction!.id,
+                title: title,
+                category: selectedCategory,
+                amount: amount,
+                isExpense: isExpense,
+                date: selectedDate,
+              );
+              await _transactionService.updateTransaction(updatedTransaction);
+            }
+
+            if (!mounted) return;
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text("Transaction Saved Successfully"),
+                backgroundColor: Colors.green,
+              ),
+            );
+            Navigator.pop(context);
+            return;
+          } catch (_) {}
+        }
+
+        // 2. If recovery not possible, show user-friendly Auth Required modal dialog
+        if (mounted) {
+          _showAuthRequiredDialog();
+        }
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Error: $e"), backgroundColor: Colors.red),
+        );
+      }
     }
+  }
+
+  void _showAuthRequiredDialog() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final surfaceColor = isDark ? const Color(0xff1E293B) : Colors.white;
+    final titleColor = isDark ? Colors.white : const Color(0xff1E293B);
+    final subtitleColor = isDark ? const Color(0xff94A3B8) : const Color(0xff64748B);
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: surfaceColor,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(24),
+          side: BorderSide(
+            color: isDark ? Colors.white.withValues(alpha: 0.1) : Colors.grey.shade200,
+          ),
+        ),
+        contentPadding: const EdgeInsets.fromLTRB(24, 24, 24, 20),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 64,
+              height: 64,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                gradient: const LinearGradient(
+                  colors: [Color(0xffF59E0B), Color(0xffD97706)],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: const Color(0xffF59E0B).withValues(alpha: 0.35),
+                    blurRadius: 18,
+                    offset: const Offset(0, 6),
+                  ),
+                ],
+              ),
+              child: const Icon(
+                Icons.lock_person_rounded,
+                color: Colors.white,
+                size: 32,
+              ),
+            ),
+            const SizedBox(height: 18),
+            Text(
+              "Authentication Required",
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w800,
+                color: titleColor,
+              ),
+            ),
+            const SizedBox(height: 10),
+            Text(
+              "Please sign in with your account to securely save and back up your transactions to the cloud.",
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 13,
+                height: 1.45,
+                color: subtitleColor,
+              ),
+            ),
+            const SizedBox(height: 24),
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: () => Navigator.pop(ctx),
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      side: BorderSide(
+                        color: isDark ? Colors.white24 : Colors.grey.shade300,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                    ),
+                    child: Text(
+                      "Cancel",
+                      style: TextStyle(
+                        color: subtitleColor,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Container(
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(14),
+                      gradient: const LinearGradient(
+                        colors: [Color(0xff1E3C72), Color(0xff2A5298)],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: const Color(0xff1E3C72).withValues(alpha: 0.35),
+                          blurRadius: 12,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    child: ElevatedButton(
+                      onPressed: () {
+                        Navigator.pop(ctx);
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (_) => const LoginScreen()),
+                        );
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.transparent,
+                        shadowColor: Colors.transparent,
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                      ),
+                      child: const Text(
+                        "Sign In",
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   @override
@@ -379,8 +583,13 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
                     if (value == null || value.trim().isEmpty) {
                       return "Please enter amount";
                     }
-                    if (double.tryParse(value.trim()) == null) {
+                    final cleaned = value.trim().replaceAll(',', '');
+                    final parsed = double.tryParse(cleaned);
+                    if (parsed == null) {
                       return "Enter a valid number";
+                    }
+                    if (parsed <= 0) {
+                      return "Amount must be greater than 0";
                     }
                     return null;
                   },
@@ -516,6 +725,7 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
 
               // Date Picker Card
               ThreeDTiltCard(
+                enableTilt: false,
                 maxTiltAngle: 0.04,
                 elevation: isDark ? 2 : 4,
                 borderRadius: BorderRadius.circular(20),
@@ -678,7 +888,7 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
     );
   }
 
-  void _showAddCustomCategoryDialog(BuildContext context, bool isDark) {
+  Future<void> _showAddCustomCategoryDialog(BuildContext context, bool isDark) async {
     final proProvider = Provider.of<ProProvider>(context, listen: false);
     if (!proProvider.isPro) {
       showDialog(
@@ -746,79 +956,83 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
       Icons.coffee_rounded,
     ];
 
-    showDialog(
-      context: context,
-      builder: (ctx) {
-        return StatefulBuilder(
-          builder: (context, setDialogState) {
-            return AlertDialog(
-              backgroundColor: isDark ? const Color(0xff1E293B) : Colors.white,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-              title: Text(
-                "New Custom Category 🏷️",
-                style: TextStyle(
-                  fontWeight: FontWeight.w800,
-                  color: isDark ? Colors.white : const Color(0xff1A202C),
+    try {
+      await showDialog(
+        context: context,
+        builder: (ctx) {
+          return StatefulBuilder(
+            builder: (context, setDialogState) {
+              return AlertDialog(
+                backgroundColor: isDark ? const Color(0xff1E293B) : Colors.white,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                title: Text(
+                  "New Custom Category 🏷️",
+                  style: TextStyle(
+                    fontWeight: FontWeight.w800,
+                    color: isDark ? Colors.white : const Color(0xff1A202C),
+                  ),
                 ),
-              ),
-              content: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  TextField(
-                    controller: nameController,
-                    decoration: InputDecoration(
-                      hintText: "Category Name (e.g. Gym, EMI)",
-                      filled: true,
-                      fillColor: isDark ? const Color(0xff0F172A) : Colors.grey.shade100,
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide.none,
+                content: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    TextField(
+                      controller: nameController,
+                      decoration: InputDecoration(
+                        hintText: "Category Name (e.g. Gym, EMI)",
+                        filled: true,
+                        fillColor: isDark ? const Color(0xff0F172A) : Colors.grey.shade100,
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide.none,
+                        ),
                       ),
                     ),
-                  ),
-                  const SizedBox(height: 16),
-                  const Text("Select Icon:", style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
-                  const SizedBox(height: 8),
-                  Wrap(
-                    spacing: 8,
-                    children: availableIcons.map((ic) {
-                      final isChosen = selectedIcon == ic;
-                      return GestureDetector(
-                        onTap: () => setDialogState(() => selectedIcon = ic),
-                        child: Container(
-                          padding: const EdgeInsets.all(8),
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            color: isChosen ? const Color(0xff1E3C72) : Colors.grey.withValues(alpha: 0.15),
+                    const SizedBox(height: 16),
+                    const Text("Select Icon:", style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
+                    const SizedBox(height: 8),
+                    Wrap(
+                      spacing: 8,
+                      children: availableIcons.map((ic) {
+                        final isChosen = selectedIcon == ic;
+                        return GestureDetector(
+                          onTap: () => setDialogState(() => selectedIcon = ic),
+                          child: Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: isChosen ? const Color(0xff1E3C72) : Colors.grey.withValues(alpha: 0.15),
+                            ),
+                            child: Icon(ic, color: isChosen ? Colors.amber : Colors.grey, size: 20),
                           ),
-                          child: Icon(ic, color: isChosen ? Colors.amber : Colors.grey, size: 20),
-                        ),
-                      );
-                    }).toList(),
+                        );
+                      }).toList(),
+                    ),
+                  ],
+                ),
+                actions: [
+                  TextButton(onPressed: () => Navigator.pop(ctx), child: const Text("Cancel")),
+                  ElevatedButton(
+                    onPressed: () {
+                      final name = nameController.text.trim();
+                      if (name.isNotEmpty) {
+                        setState(() {
+                          categoryIcons[name] = selectedIcon;
+                          selectedCategory = name;
+                        });
+                        Navigator.pop(ctx);
+                      }
+                    },
+                    child: const Text("Add Category"),
                   ),
                 ],
-              ),
-              actions: [
-                TextButton(onPressed: () => Navigator.pop(ctx), child: const Text("Cancel")),
-                ElevatedButton(
-                  onPressed: () {
-                    final name = nameController.text.trim();
-                    if (name.isNotEmpty) {
-                      setState(() {
-                        categoryIcons[name] = selectedIcon;
-                        selectedCategory = name;
-                      });
-                      Navigator.pop(ctx);
-                    }
-                  },
-                  child: const Text("Add Category"),
-                ),
-              ],
-            );
-          },
-        );
-      },
-    );
+              );
+            },
+          );
+        },
+      );
+    } finally {
+      nameController.dispose();
+    }
   }
 }

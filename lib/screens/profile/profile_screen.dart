@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
 import '../../services/auth_service.dart';
+import '../../services/transaction_service.dart';
 import '../../services/notification_service.dart';
 import '../../providers/theme_provider.dart';
 import '../../providers/currency_provider.dart';
@@ -73,10 +74,38 @@ class _ProfileScreenState extends State<ProfileScreen> {
           }
 
           final user = snapshot.data?.data() ?? {};
-          final fullName = user["fullName"] ?? "Valued User";
-          final email = user["email"] ?? "No Email Connected";
+          final currentAuthUser = FirebaseAuth.instance.currentUser;
+
+          // Robust cascade name resolution
+          String resolvedFullName = "";
+          if (user["fullName"] != null && user["fullName"].toString().trim().isNotEmpty) {
+            resolvedFullName = user["fullName"].toString().trim();
+          } else if (user["displayName"] != null && user["displayName"].toString().trim().isNotEmpty) {
+            resolvedFullName = user["displayName"].toString().trim();
+          } else if (user["name"] != null && user["name"].toString().trim().isNotEmpty) {
+            resolvedFullName = user["name"].toString().trim();
+          } else if (currentAuthUser?.displayName != null && currentAuthUser!.displayName!.trim().isNotEmpty) {
+            resolvedFullName = currentAuthUser.displayName!.trim();
+          } else if (AuthService.cachedName != null && AuthService.cachedName!.trim().isNotEmpty) {
+            resolvedFullName = AuthService.cachedName!.trim();
+          } else if (currentAuthUser?.email != null && currentAuthUser!.email!.isNotEmpty) {
+            resolvedFullName = currentAuthUser.email!.split('@')[0];
+          } else if (user["email"] != null && user["email"].toString().isNotEmpty) {
+            resolvedFullName = user["email"].toString().split('@')[0];
+          } else if (AuthService.cachedEmail != null && AuthService.cachedEmail!.isNotEmpty) {
+            resolvedFullName = AuthService.cachedEmail!.split('@')[0];
+          }
+          final fullName = resolvedFullName.isNotEmpty ? resolvedFullName : "Valued User";
+
+          final email = (user["email"] != null && user["email"].toString().trim().isNotEmpty)
+              ? user["email"].toString().trim()
+              : (currentAuthUser?.email ?? AuthService.cachedEmail ?? "No Email Connected");
+
           final phone = user["phone"] ?? "";
-          final photoUrl = user["photoUrl"] ?? "";
+
+          final photoUrl = (user["photoUrl"] != null && user["photoUrl"].toString().trim().isNotEmpty)
+              ? user["photoUrl"].toString().trim()
+              : (currentAuthUser?.photoURL ?? AuthService.cachedPhotoUrl ?? "");
 
           return SingleChildScrollView(
             physics: const BouncingScrollPhysics(),
@@ -397,7 +426,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           ),
                         ),
                         child: const Text(
-                          "v1.2.6 (26)",
+                          "v1.3.5 (35)",
                           style: TextStyle(
                             fontSize: 11,
                             fontWeight: FontWeight.w700,
@@ -491,7 +520,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       ),
                       const SizedBox(height: 8),
                       Text(
-                        "Expense Tracker • Version 1.3.0 (Build 30)",
+                        "Expense Tracker • Version 1.3.5 (Build 35)",
                         style: TextStyle(
                           fontSize: 11,
                           fontWeight: FontWeight.w500,
@@ -502,7 +531,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   ),
                 ),
 
-                const SizedBox(height: 30),
+                const SizedBox(height: 125),
               ],
             ),
           );
@@ -553,10 +582,19 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ],
         ),
         border: Border.all(
-          color: Colors.white.withValues(alpha: 0.12),
-          width: 1.2,
+          color: isPro
+              ? const Color(0xffF59E0B).withValues(alpha: 0.5)
+              : Colors.white.withValues(alpha: 0.12),
+          width: isPro ? 1.5 : 1.2,
         ),
         boxShadow: [
+          if (isPro)
+            BoxShadow(
+              color: const Color(0xffF59E0B).withValues(alpha: 0.2),
+              blurRadius: 24,
+              spreadRadius: 1,
+              offset: const Offset(0, 6),
+            ),
           BoxShadow(
             color: const Color(0xff0F172A).withValues(alpha: 0.6),
             blurRadius: 20,
@@ -572,6 +610,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               GestureDetector(
                 onTap: onEditTap,
                 child: Stack(
+                  clipBehavior: Clip.none,
                   children: [
                     Container(
                       padding: const EdgeInsets.all(3),
@@ -579,7 +618,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         shape: BoxShape.circle,
                         gradient: LinearGradient(
                           colors: isPro
-                              ? [const Color(0xffFBBF24), const Color(0xffD97706)]
+                              ? [const Color(0xffFBBF24), const Color(0xffFFD700), const Color(0xffD97706)]
                               : [const Color(0xff38BDF8), const Color(0xff6366F1)],
                           begin: Alignment.topLeft,
                           end: Alignment.bottomRight,
@@ -587,8 +626,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         boxShadow: [
                           BoxShadow(
                             color: (isPro ? const Color(0xffF59E0B) : const Color(0xff38BDF8))
-                                .withValues(alpha: 0.35),
-                            blurRadius: 14,
+                                .withValues(alpha: 0.45),
+                            blurRadius: 16,
                             spreadRadius: 1,
                           ),
                         ],
@@ -606,6 +645,28 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             : null,
                       ),
                     ),
+                    if (isPro)
+                      Positioned(
+                        top: -5,
+                        left: -4,
+                        child: Container(
+                          padding: const EdgeInsets.all(4),
+                          decoration: BoxDecoration(
+                            gradient: const LinearGradient(
+                              colors: [Color(0xffFBBF24), Color(0xffD97706)],
+                            ),
+                            shape: BoxShape.circle,
+                            border: Border.all(color: Colors.white, width: 1.2),
+                            boxShadow: [
+                              BoxShadow(
+                                color: const Color(0xffF59E0B).withValues(alpha: 0.6),
+                                blurRadius: 6,
+                              ),
+                            ],
+                          ),
+                          child: const Text('👑', style: TextStyle(fontSize: 10, height: 1)),
+                        ),
+                      ),
                     Positioned(
                       bottom: 0,
                       right: 0,
@@ -652,20 +713,35 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         const SizedBox(width: 6),
                         if (isPro)
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                             decoration: BoxDecoration(
                               gradient: const LinearGradient(
                                 colors: [Color(0xffF59E0B), Color(0xffD97706)],
                               ),
-                              borderRadius: BorderRadius.circular(6),
+                              borderRadius: BorderRadius.circular(10),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: const Color(0xffF59E0B).withValues(alpha: 0.4),
+                                  blurRadius: 6,
+                                  offset: const Offset(0, 2),
+                                ),
+                              ],
                             ),
-                            child: const Text(
-                              "PRO",
-                              style: TextStyle(
-                                fontSize: 10,
-                                fontWeight: FontWeight.w900,
-                                color: Colors.white,
-                              ),
+                            child: const Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text('👑', style: TextStyle(fontSize: 10)),
+                                SizedBox(width: 3),
+                                Text(
+                                  "VIP",
+                                  style: TextStyle(
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.w900,
+                                    color: Colors.white,
+                                    letterSpacing: 0.4,
+                                  ),
+                                ),
+                              ],
                             ),
                           )
                         else
@@ -820,7 +896,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           borderRadius: BorderRadius.circular(22),
           gradient: pro.isPro
               ? const LinearGradient(
-                  colors: [Color(0xffD97706), Color(0xff92400E)],
+                  colors: [Color(0xffD97706), Color(0xff78350F)],
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                 )
@@ -874,7 +950,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     runSpacing: 4,
                     children: [
                       Text(
-                        pro.isPro ? "PRO MEMBER 👑" : "UPGRADE TO PRO 👑",
+                        pro.isPro ? "VIP PRO MEMBER 👑" : "UPGRADE TO PRO 👑",
                         style: const TextStyle(
                           color: Colors.white,
                           fontSize: 14,
@@ -893,7 +969,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           ),
                         ),
                         child: Text(
-                          pro.isPro ? "ACTIVE" : "VIP ACCESS",
+                          pro.isPro ? "VIP ACTIVE ✨" : "VIP ACCESS",
                           style: const TextStyle(
                             fontSize: 9,
                             fontWeight: FontWeight.w800,
@@ -906,7 +982,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   const SizedBox(height: 3),
                   Text(
                     pro.isPro
-                        ? "100% Ad-Free • Biometric App Lock • Unlimited PDF Reports"
+                        ? "Tap to review VIP Superpowers • 100% Ad-Free • Unlimited PDF"
                         : "Remove all ads, unlock Biometric Lock & PDF reports",
                     style: TextStyle(
                       color: Colors.white.withValues(alpha: 0.8),
@@ -1345,7 +1421,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             Icon(Icons.verified_rounded, size: 14, color: Color(0xff10B981)),
                             SizedBox(width: 5),
                             Text(
-                              "Version 1.3.0 (Build 30)",
+                              "Version 1.3.5 (Build 35)",
                               style: TextStyle(
                                 fontWeight: FontWeight.w800,
                                 color: Color(0xff10B981),
@@ -2235,6 +2311,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                 onPressed: () async {
                                   Navigator.pop(ctx);
                                   await authService.logout();
+                                  TransactionService.clearCache();
                                   if (!context.mounted) return;
                                   Navigator.pushAndRemoveUntil(
                                     context,
@@ -2494,14 +2571,31 @@ class _ProfileScreenState extends State<ProfileScreen> {
       if (user == null) return;
       final uid = user.uid;
 
-      await FirebaseFirestore.instance.collection("users").doc(uid).delete();
+      // 1. Delete all user transaction records in subcollection
+      final transactionsRef = FirebaseFirestore.instance
+          .collection("users")
+          .doc(uid)
+          .collection("transactions");
+      final snapshot = await transactionsRef.get();
+      final batch = FirebaseFirestore.instance.batch();
+      for (final doc in snapshot.docs) {
+        batch.delete(doc.reference);
+      }
+      batch.delete(FirebaseFirestore.instance.collection("users").doc(uid));
+      await batch.commit();
+
+      // 2. Delete user from Firebase Auth
       await user.delete();
+
+      // 3. Clear auth session & transaction cache
+      await AuthService().logout();
+      TransactionService.clearCache();
 
       if (!mounted) return;
 
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text("Account deleted successfully"),
+          content: Text("Account and data deleted successfully"),
           backgroundColor: Colors.green,
         ),
       );
@@ -2511,6 +2605,24 @@ class _ProfileScreenState extends State<ProfileScreen> {
         MaterialPageRoute(builder: (_) => const SplashScreen()),
         (route) => false,
       );
+    } on FirebaseAuthException catch (e) {
+      if (!mounted) return;
+      if (e.code == 'requires-recent-login') {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text("Security requirement: Please log out and log back in before deleting your account."),
+            backgroundColor: Colors.red,
+            duration: Duration(seconds: 4),
+          ),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text("Error: ${e.message ?? e.code}"),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(

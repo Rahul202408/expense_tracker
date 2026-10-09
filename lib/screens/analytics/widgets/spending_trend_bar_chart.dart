@@ -1,4 +1,3 @@
-import 'dart:ui';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
@@ -96,18 +95,15 @@ class _SpendingTrendBarChartState extends State<SpendingTrendBarChart> {
         ? const Color(0xffF43F5E)
         : const Color(0xff059669);
 
-    return ThreeDTiltCard(
-      margin: const EdgeInsets.symmetric(vertical: 12),
-      maxTiltAngle: 0.08,
-      elevation: isDark ? 3 : 8,
-      shadowColor: primaryBarColor.withValues(alpha: 0.2),
-      borderRadius: BorderRadius.circular(28),
-      child: ClipRRect(
+    return RepaintBoundary(
+      child: ThreeDTiltCard(
+        margin: const EdgeInsets.symmetric(vertical: 12),
+        maxTiltAngle: 0.08,
+        elevation: isDark ? 3 : 8,
+        shadowColor: primaryBarColor.withValues(alpha: 0.2),
         borderRadius: BorderRadius.circular(28),
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
-          child: Container(
-            padding: const EdgeInsets.fromLTRB(16, 20, 16, 16),
+        child: Container(
+          padding: const EdgeInsets.fromLTRB(16, 20, 16, 16),
             decoration: BoxDecoration(
               color: cardBgColor,
               borderRadius: BorderRadius.circular(28),
@@ -197,7 +193,9 @@ class _SpendingTrendBarChartState extends State<SpendingTrendBarChart> {
                           tooltipRoundedRadius: 10,
                           tooltipPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                           getTooltipItem: (group, groupIndex, rod, rodIndex) {
-                            final point = trendPoints[group.x.toInt()];
+                            final idx = group.x.toInt();
+                            if (idx < 0 || idx >= trendPoints.length) return null;
+                            final point = trendPoints[idx];
                             return BarTooltipItem(
                               "${point.label}\n",
                               const TextStyle(
@@ -219,13 +217,12 @@ class _SpendingTrendBarChartState extends State<SpendingTrendBarChart> {
                           },
                         ),
                         touchCallback: (event, response) {
-                          setState(() {
-                            if (response?.spot != null) {
-                              touchedGroupIndex = response!.spot!.touchedBarGroupIndex;
-                            } else {
-                              touchedGroupIndex = null;
-                            }
-                          });
+                          final newIndex = response?.spot?.touchedBarGroupIndex;
+                          if (newIndex != touchedGroupIndex) {
+                            setState(() {
+                              touchedGroupIndex = newIndex;
+                            });
+                          }
                         },
                       ),
                       titlesData: FlTitlesData(
@@ -312,8 +309,7 @@ class _SpendingTrendBarChartState extends State<SpendingTrendBarChart> {
             ),
           ),
         ),
-      ),
-    );
+      );
   }
 
   List<_TrendPoint> _calculateTrend(List<TransactionModel> list, String period) {

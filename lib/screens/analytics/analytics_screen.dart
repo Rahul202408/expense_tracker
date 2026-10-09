@@ -29,13 +29,20 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
   final TransactionService _transactionService = TransactionService();
   final DashboardService _dashboardService = DashboardService();
   final AnalyticsService _analyticsService = AnalyticsService();
+  late Stream<List<TransactionModel>> _transactionStream;
 
-  String _selectedPeriod = "This Month";
+  @override
+  void initState() {
+    super.initState();
+    _transactionStream = _transactionService.getTransactions();
+  }
+
+  String _selectedPeriod = "All";
   final List<String> _periods = [
+    "All",
     "This Month",
     "This Week",
     "This Year",
-    "All Time",
     "Custom 📅",
   ];
   DateTimeRange? _customDateRange;
@@ -48,7 +55,7 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
     List<TransactionModel> list,
     String period,
   ) {
-    if (period == "All Time") return list;
+    if (period == "All" || period == "All Time") return list;
     final now = DateTime.now();
 
     return list.where((t) {
@@ -534,9 +541,10 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
         elevation: 0,
         actions: [
           StreamBuilder<List<TransactionModel>>(
-            stream: _transactionService.getTransactions(),
+            stream: _transactionStream,
+            initialData: TransactionService.cachedTransactions,
             builder: (context, snap) {
-              final all = snap.data ?? [];
+              final all = snap.data ?? TransactionService.cachedTransactions ?? [];
               final filtered = _filterByPeriod(all, _selectedPeriod);
               return IconButton(
                 tooltip: "Export Report",
@@ -561,14 +569,23 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
       ),
 
       body: StreamBuilder<List<TransactionModel>>(
-        stream: _transactionService.getTransactions(),
+        stream: _transactionStream,
+        initialData: TransactionService.cachedTransactions,
         builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting &&
-              !snapshot.hasData) {
+          final bool isWaiting =
+              (snapshot.connectionState == ConnectionState.waiting &&
+                      !snapshot.hasData) ||
+                  (snapshot.data == null &&
+                      TransactionService.cachedTransactions == null &&
+                      !snapshot.hasError);
+
+          if (isWaiting) {
             return const AnalyticsSkeleton();
           }
 
-          final allTransactions = snapshot.data ?? [];
+          final allTransactions = snapshot.data ??
+              TransactionService.cachedTransactions ??
+              [];
           final transactions = _filterByPeriod(allTransactions, _selectedPeriod);
 
           final income = _dashboardService.totalIncome(transactions);
@@ -828,7 +845,7 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
                     );
                   }),
 
-                const SizedBox(height: 90),
+                const SizedBox(height: 125),
               ],
             ),
           );

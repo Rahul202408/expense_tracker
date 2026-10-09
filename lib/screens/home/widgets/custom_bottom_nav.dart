@@ -42,14 +42,23 @@ class CustomBottomNav extends StatelessWidget {
       ),
     ];
 
+    final bottomInset = MediaQuery.viewPaddingOf(context).bottom > 0
+        ? MediaQuery.viewPaddingOf(context).bottom
+        : MediaQuery.paddingOf(context).bottom;
+
     return Container(
-      margin: const EdgeInsets.only(left: 14, right: 14, bottom: 20, top: 4),
-      height: 72,
+      margin: EdgeInsets.only(
+        left: 14,
+        right: 14,
+        bottom: bottomInset > 0 ? (bottomInset + 8) : 16,
+        top: 4,
+      ),
+      height: 70,
       decoration: BoxDecoration(
         color: isDark
             ? const Color(0xff1E293B).withValues(alpha: 0.95)
             : Colors.white.withValues(alpha: 0.95),
-        borderRadius: BorderRadius.circular(36),
+        borderRadius: BorderRadius.circular(35),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: isDark ? 0.3 : 0.12),
@@ -71,7 +80,7 @@ class CustomBottomNav extends StatelessWidget {
         ),
       ),
       child: ClipRRect(
-        borderRadius: BorderRadius.circular(36),
+        borderRadius: BorderRadius.circular(35),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceEvenly,
           children: [

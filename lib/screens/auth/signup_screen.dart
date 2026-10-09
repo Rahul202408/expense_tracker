@@ -1,7 +1,9 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:provider/provider.dart';
 
+import '../../providers/currency_provider.dart';
 import '../../widgets/primary_button.dart';
 import '../../widgets/three_d_tilt_card.dart';
 import 'login_screen.dart';
@@ -54,6 +56,7 @@ class _SignupScreenState extends State<SignupScreen> {
         }
 
         if (!mounted) return;
+        Provider.of<CurrencyProvider>(context, listen: false).syncFromFirestore();
         Navigator.pushAndRemoveUntil(
           context,
           MaterialPageRoute(builder: (_) => const MainScreen()),
@@ -137,6 +140,9 @@ class _SignupScreenState extends State<SignupScreen> {
     setState(() => isLoading = false);
 
     if (result == null) {
+      if (mounted) {
+        Provider.of<CurrencyProvider>(context, listen: false).setCurrency(_selectedCurrency);
+      }
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text("Account Created Successfully!"),
@@ -144,9 +150,10 @@ class _SignupScreenState extends State<SignupScreen> {
         ),
       );
 
-      Navigator.pushReplacement(
+      Navigator.pushAndRemoveUntil(
         context,
         MaterialPageRoute(builder: (_) => const MainScreen()),
+        (route) => false,
       );
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -187,6 +194,7 @@ class _SignupScreenState extends State<SignupScreen> {
               ),
               const SizedBox(height: 28),
               ThreeDTiltCard(
+                enableTilt: false,
                 maxTiltAngle: 0.05,
                 elevation: isDark ? 4 : 12,
                 shadowColor: const Color(0xff11998E),

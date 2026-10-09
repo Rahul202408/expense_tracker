@@ -161,37 +161,49 @@ class _SplashScreenState extends State<SplashScreen>
     _hasNavigated = true;
 
     try {
-      // 1. Register launch for contextual prompts safely
+      // 1. Register launch for contextual prompts safely with timeout
       try {
-        await AppPromptService().registerLaunch();
+        await AppPromptService().registerLaunch().timeout(const Duration(seconds: 1));
       } catch (e) {
         debugPrint("Splash registerLaunch note: $e");
       }
 
-      // 2. Read local state
-      final prefs = await SharedPreferences.getInstance();
-      final bool seen = prefs.getBool("onboarding") ?? false;
-      final bool isLocallyLoggedIn = prefs.getBool("is_user_logged_in") ?? false;
-      final String? savedUid = prefs.getString("logged_user_uid") ?? AuthService.cachedUid;
+      // 2. Read local state safely with timeout
+      SharedPreferences? prefs;
+      try {
+        prefs = await SharedPreferences.getInstance().timeout(const Duration(seconds: 2));
+      } catch (_) {}
+
       final authService = AuthService();
 
-      // 3. Resolve user auth
+      // 3. Resolve user auth with timeout
       User? user;
       try {
-        user = await _authRestoreFuture;
+        user = await _authRestoreFuture.timeout(const Duration(seconds: 3));
       } catch (_) {}
       try {
         user ??= FirebaseAuth.instance.currentUser;
       } catch (_) {}
 
-      // 4. Session verification
-      bool hasValidSession = false;
+      // If user is null, attempt silent Google sign-in restoration
+      if (user == null) {
+        try {
+          user = await authService.trySilentGoogleSignIn().timeout(const Duration(seconds: 2));
+        } catch (_) {}
+      }
       try {
-        hasValidSession = user != null ||
-            (isLocallyLoggedIn && savedUid != null && savedUid.isNotEmpty) ||
-            (await authService.isSessionValid());
-      } catch (_) {
-        hasValidSession = user != null || (savedUid != null && savedUid.isNotEmpty);
+        user ??= FirebaseAuth.instance.currentUser;
+      } catch (_) {}
+
+      // 4. Session verification: strictly requires a non-null authenticated Firebase user
+      final bool hasValidSession = user != null;
+
+      // Clean up any stale ghost login flags so state is 100% consistent
+      if (!hasValidSession) {
+        try {
+          await prefs?.setBool("is_user_logged_in", false);
+          await prefs?.remove("logged_user_uid");
+        } catch (_) {}
       }
 
       if (!mounted) return;
@@ -199,15 +211,13 @@ class _SplashScreenState extends State<SplashScreen>
       // 5. Navigate to Home or Lock screen if session is valid
       if (hasValidSession) {
         try {
-          if (user != null) {
-            await authService.recordUserLoginSession(user);
-          }
+          await authService.recordUserLoginSession(user);
           await authService.updateLastActiveTime();
         } catch (_) {}
 
         bool isLockEnabled = false;
         try {
-          isLockEnabled = await SecurityService().isAppLockEnabled();
+          isLockEnabled = await SecurityService().isAppLockEnabled().timeout(const Duration(seconds: 1));
         } catch (_) {}
 
         if (!mounted) return;
@@ -215,22 +225,12 @@ class _SplashScreenState extends State<SplashScreen>
         if (isLockEnabled) {
           Navigator.pushReplacement(
             context,
-            PageRouteBuilder(
-              pageBuilder: (_, __, ___) => const AppLockScreen(),
-              transitionsBuilder: (_, animation, __, child) =>
-                  FadeTransition(opacity: animation, child: child),
-              transitionDuration: const Duration(milliseconds: 400),
-            ),
+            MaterialPageRoute(builder: (_) => const AppLockScreen()),
           );
         } else {
           Navigator.pushReplacement(
             context,
-            PageRouteBuilder(
-              pageBuilder: (_, __, ___) => const MainScreen(),
-              transitionsBuilder: (_, animation, __, child) =>
-                  FadeTransition(opacity: animation, child: child),
-              transitionDuration: const Duration(milliseconds: 400),
-            ),
+            MaterialPageRoute(builder: (_) => const MainScreen()),
           );
         }
         return;
@@ -238,40 +238,26 @@ class _SplashScreenState extends State<SplashScreen>
 
       if (!mounted) return;
 
-      // 6. Navigate to Onboarding or Login screen
+      // 6. First-time users see Onboarding, returning users go directly to LoginScreen
+      final bool seen = prefs?.getBool("onboarding") ?? false;
       if (!seen) {
         Navigator.pushReplacement(
           context,
-          PageRouteBuilder(
-            pageBuilder: (_, __, ___) => const OnboardingScreen(),
-            transitionsBuilder: (_, animation, __, child) =>
-                FadeTransition(opacity: animation, child: child),
-            transitionDuration: const Duration(milliseconds: 400),
-          ),
+          MaterialPageRoute(builder: (_) => const OnboardingScreen()),
         );
       } else {
         Navigator.pushReplacement(
           context,
-          PageRouteBuilder(
-            pageBuilder: (_, __, ___) => const LoginScreen(),
-            transitionsBuilder: (_, animation, __, child) =>
-                FadeTransition(opacity: animation, child: child),
-            transitionDuration: const Duration(milliseconds: 400),
-          ),
+          MaterialPageRoute(builder: (_) => const LoginScreen()),
         );
       }
     } catch (e) {
       debugPrint("Splash checkFirstLaunch safety fallback: $e");
       if (!mounted) return;
-      // Fail-safe navigation: take user to LoginScreen so they are never stuck
+      // Fail-safe navigation: directly take user to LoginScreen so they are never stuck
       Navigator.pushReplacement(
         context,
-        PageRouteBuilder(
-          pageBuilder: (_, __, ___) => const LoginScreen(),
-          transitionsBuilder: (_, animation, __, child) =>
-              FadeTransition(opacity: animation, child: child),
-          transitionDuration: const Duration(milliseconds: 400),
-        ),
+        MaterialPageRoute(builder: (_) => const LoginScreen()),
       );
     }
   }
@@ -404,87 +390,100 @@ class _SplashScreenState extends State<SplashScreen>
                       opacity: _textOpacityAnimation,
                       child: Column(
                         children: [
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Text(
-                                "Expense Tracker",
-                                style: TextStyle(
-                                  fontSize: 30,
-                                  fontWeight: FontWeight.w900,
-                                  color: isDark ? Colors.white : const Color(0xff1A202C),
-                                  letterSpacing: -0.5,
-                                ),
-                              ),
-                              const SizedBox(width: 6),
-                              Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                decoration: BoxDecoration(
-                                  gradient: const LinearGradient(
-                                    colors: [Color(0xffF59E0B), Color(0xffD97706)],
+                          Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 16),
+                            child: FittedBox(
+                              fit: BoxFit.scaleDown,
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Text(
+                                    "Expense Tracker",
+                                    style: TextStyle(
+                                      fontSize: 28,
+                                      fontWeight: FontWeight.w900,
+                                      color: isDark ? Colors.white : const Color(0xff1A202C),
+                                      letterSpacing: -0.5,
+                                    ),
                                   ),
-                                  borderRadius: BorderRadius.circular(6),
-                                ),
-                                child: const Text(
-                                  "PRO",
-                                  style: TextStyle(
-                                    fontSize: 10,
-                                    fontWeight: FontWeight.w900,
-                                    color: Colors.white,
-                                    letterSpacing: 0.5,
+                                  const SizedBox(width: 8),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                    decoration: BoxDecoration(
+                                      gradient: const LinearGradient(
+                                        colors: [Color(0xffF59E0B), Color(0xffD97706)],
+                                      ),
+                                      borderRadius: BorderRadius.circular(6),
+                                    ),
+                                    child: const Text(
+                                      "PRO",
+                                      style: TextStyle(
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.w900,
+                                        color: Colors.white,
+                                        letterSpacing: 0.5,
+                                      ),
+                                    ),
                                   ),
-                                ),
+                                ],
                               ),
-                            ],
+                            ),
                           ),
 
                           const SizedBox(height: 10),
 
                           // Glassmorphism Tagline Badge
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 16,
-                              vertical: 7,
-                            ),
-                            decoration: BoxDecoration(
-                              color: isDark
-                                  ? const Color(0xff1E293B).withValues(alpha: 0.7)
-                                  : Colors.white.withValues(alpha: 0.85),
-                              borderRadius: BorderRadius.circular(20),
-                              border: Border.all(
-                                color: const Color(0xff10B981).withValues(alpha: 0.3),
-                                width: 1,
+                          Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 16),
+                            child: FittedBox(
+                              fit: BoxFit.scaleDown,
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 16,
+                                  vertical: 7,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: isDark
+                                      ? const Color(0xff1E293B).withValues(alpha: 0.7)
+                                      : Colors.white.withValues(alpha: 0.85),
+                                  borderRadius: BorderRadius.circular(20),
+                                  border: Border.all(
+                                    color: const Color(0xff10B981).withValues(alpha: 0.3),
+                                    width: 1,
+                                  ),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Colors.black.withValues(alpha: 0.05),
+                                      blurRadius: 10,
+                                      offset: const Offset(0, 4),
+                                    ),
+                                  ],
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Container(
+                                      width: 7,
+                                      height: 7,
+                                      decoration: const BoxDecoration(
+                                        shape: BoxShape.circle,
+                                        color: Color(0xff10B981),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    const Text(
+                                      "Track • Save • Grow Smartly",
+                                      style: TextStyle(
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w700,
+                                        color: Color(0xff10B981),
+                                        letterSpacing: 0.3,
+                                      ),
+                                    ),
+                                  ],
+                                ),
                               ),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black.withValues(alpha: 0.05),
-                                  blurRadius: 10,
-                                  offset: const Offset(0, 4),
-                                ),
-                              ],
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Container(
-                                  width: 7,
-                                  height: 7,
-                                  decoration: const BoxDecoration(
-                                    shape: BoxShape.circle,
-                                    color: Color(0xff10B981),
-                                  ),
-                                ),
-                                const SizedBox(width: 8),
-                                const Text(
-                                  "Track • Save • Grow Smartly",
-                                  style: TextStyle(
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.w700,
-                                    color: Color(0xff10B981),
-                                    letterSpacing: 0.3,
-                                  ),
-                                ),
-                              ],
                             ),
                           ),
                         ],
@@ -610,7 +609,7 @@ class _SplashScreenState extends State<SplashScreen>
                           ),
                           const SizedBox(height: 4),
                           Text(
-                            "Version 1.3.0",
+                            "Version 1.3.5",
                             style: TextStyle(
                               fontSize: 10,
                               fontWeight: FontWeight.w600,

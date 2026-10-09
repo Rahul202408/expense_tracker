@@ -3,7 +3,6 @@
 import 'package:firebase_core/firebase_core.dart' show FirebaseOptions;
 import 'package:flutter/foundation.dart'
     show defaultTargetPlatform, kIsWeb, TargetPlatform;
-import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 /// Default [FirebaseOptions] for use with your Firebase apps.
 ///
@@ -41,50 +40,50 @@ class DefaultFirebaseOptions {
     }
   }
 
-  static FirebaseOptions get web => FirebaseOptions(
-    apiKey: dotenv.env['FIREBASE_WEB_API_KEY'] ?? 'AIzaSyAHF3w2oqSVW1Duw-AQ1QIY5USXkC-k4dQ',
-    appId: dotenv.env['FIREBASE_WEB_APP_ID'] ?? '1:567397044370:web:dbcb3665e66468faa5964b',
-    messagingSenderId: dotenv.env['FIREBASE_MESSAGING_SENDER_ID'] ?? '567397044370',
-    projectId: dotenv.env['FIREBASE_PROJECT_ID'] ?? 'expense-tracker-6ac01',
-    authDomain: dotenv.env['FIREBASE_WEB_AUTH_DOMAIN'] ?? 'expense-tracker-6ac01.firebaseapp.com',
-    storageBucket: dotenv.env['FIREBASE_STORAGE_BUCKET'] ?? 'expense-tracker-6ac01.firebasestorage.app',
-    measurementId: dotenv.env['FIREBASE_WEB_MEASUREMENT_ID'] ?? 'G-Q62YF979G3',
+  static const FirebaseOptions web = FirebaseOptions(
+    apiKey: 'AIzaSyAHF3w2oqSVW1Duw-AQ1QIY5USXkC-k4dQ',
+    appId: '1:567397044370:web:dbcb3665e66468faa5964b',
+    messagingSenderId: '567397044370',
+    projectId: 'expense-tracker-6ac01',
+    authDomain: 'expense-tracker-6ac01.firebaseapp.com',
+    storageBucket: 'expense-tracker-6ac01.firebasestorage.app',
+    measurementId: 'G-Q62YF979G3',
   );
 
-  static FirebaseOptions get android => FirebaseOptions(
-    apiKey: dotenv.env['FIREBASE_ANDROID_API_KEY'] ?? 'AIzaSyDgZAL68qTy1p-J720bGOW9DXshmBWhcJY',
-    appId: dotenv.env['FIREBASE_ANDROID_APP_ID'] ?? '1:567397044370:android:6246e2a232b4bdbba5964b',
-    messagingSenderId: dotenv.env['FIREBASE_MESSAGING_SENDER_ID'] ?? '567397044370',
-    projectId: dotenv.env['FIREBASE_PROJECT_ID'] ?? 'expense-tracker-6ac01',
-    storageBucket: dotenv.env['FIREBASE_STORAGE_BUCKET'] ?? 'expense-tracker-6ac01.firebasestorage.app',
+  static const FirebaseOptions android = FirebaseOptions(
+    apiKey: 'AIzaSyDgZAL68qTy1p-J720bGOW9DXshmBWhcJY',
+    appId: '1:567397044370:android:6246e2a232b4bdbba5964b',
+    messagingSenderId: '567397044370',
+    projectId: 'expense-tracker-6ac01',
+    storageBucket: 'expense-tracker-6ac01.firebasestorage.app',
   );
 
-  static FirebaseOptions get ios => FirebaseOptions(
-    apiKey: dotenv.env['FIREBASE_IOS_API_KEY'] ?? 'AIzaSyDZPN_9SDJYqLdLtmmV54hjLjmsWItF0bQ',
-    appId: dotenv.env['FIREBASE_IOS_APP_ID'] ?? '1:567397044370:ios:d505cb52b7925ea5a5964b',
-    messagingSenderId: dotenv.env['FIREBASE_MESSAGING_SENDER_ID'] ?? '567397044370',
-    projectId: dotenv.env['FIREBASE_PROJECT_ID'] ?? 'expense-tracker-6ac01',
-    storageBucket: dotenv.env['FIREBASE_STORAGE_BUCKET'] ?? 'expense-tracker-6ac01.firebasestorage.app',
-    iosBundleId: dotenv.env['FIREBASE_IOS_BUNDLE_ID'] ?? 'com.example.expenseTracker',
+  static const FirebaseOptions ios = FirebaseOptions(
+    apiKey: 'AIzaSyDZPN_9SDJYqLdLtmmV54hjLjmsWItF0bQ',
+    appId: '1:567397044370:ios:d505cb52b7925ea5a5964b',
+    messagingSenderId: '567397044370',
+    projectId: 'expense-tracker-6ac01',
+    storageBucket: 'expense-tracker-6ac01.firebasestorage.app',
+    iosBundleId: 'com.example.expenseTracker',
   );
 
-  static FirebaseOptions get macos => FirebaseOptions(
-    apiKey: dotenv.env['FIREBASE_IOS_API_KEY'] ?? 'AIzaSyDZPN_9SDJYqLdLtmmV54hjLjmsWItF0bQ',
-    appId: dotenv.env['FIREBASE_IOS_APP_ID'] ?? '1:567397044370:ios:d505cb52b7925ea5a5964b',
-    messagingSenderId: dotenv.env['FIREBASE_MESSAGING_SENDER_ID'] ?? '567397044370',
-    projectId: dotenv.env['FIREBASE_PROJECT_ID'] ?? 'expense-tracker-6ac01',
-    storageBucket: dotenv.env['FIREBASE_STORAGE_BUCKET'] ?? 'expense-tracker-6ac01.firebasestorage.app',
-    iosBundleId: dotenv.env['FIREBASE_IOS_BUNDLE_ID'] ?? 'com.example.expenseTracker',
+  static const FirebaseOptions macos = FirebaseOptions(
+    apiKey: 'AIzaSyDZPN_9SDJYqLdLtmmV54hjLjmsWItF0bQ',
+    appId: '1:567397044370:ios:d505cb52b7925ea5a5964b',
+    messagingSenderId: '567397044370',
+    projectId: 'expense-tracker-6ac01',
+    storageBucket: 'expense-tracker-6ac01.firebasestorage.app',
+    iosBundleId: 'com.example.expenseTracker',
   );
 
-  static FirebaseOptions get windows => FirebaseOptions(
-    apiKey: dotenv.env['FIREBASE_WINDOWS_API_KEY'] ?? 'AIzaSyAHF3w2oqSVW1Duw-AQ1QIY5USXkC-k4dQ',
-    appId: dotenv.env['FIREBASE_WINDOWS_APP_ID'] ?? '1:567397044370:web:6a1b95fd4415c031a5964b',
-    messagingSenderId: dotenv.env['FIREBASE_MESSAGING_SENDER_ID'] ?? '567397044370',
-    projectId: dotenv.env['FIREBASE_PROJECT_ID'] ?? 'expense-tracker-6ac01',
-    authDomain: dotenv.env['FIREBASE_WINDOWS_AUTH_DOMAIN'] ?? 'expense-tracker-6ac01.firebaseapp.com',
-    storageBucket: dotenv.env['FIREBASE_STORAGE_BUCKET'] ?? 'expense-tracker-6ac01.firebasestorage.app',
-    measurementId: dotenv.env['FIREBASE_WINDOWS_MEASUREMENT_ID'] ?? 'G-DFJQ4R7NPQ',
+  static const FirebaseOptions windows = FirebaseOptions(
+    apiKey: 'AIzaSyAHF3w2oqSVW1Duw-AQ1QIY5USXkC-k4dQ',
+    appId: '1:567397044370:web:6a1b95fd4415c031a5964b',
+    messagingSenderId: '567397044370',
+    projectId: 'expense-tracker-6ac01',
+    authDomain: 'expense-tracker-6ac01.firebaseapp.com',
+    storageBucket: 'expense-tracker-6ac01.firebasestorage.app',
+    measurementId: 'G-DFJQ4R7NPQ',
   );
 }
 

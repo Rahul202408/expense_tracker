@@ -19,10 +19,17 @@ class MainScreen extends StatefulWidget {
 
 class _MainScreenState extends State<MainScreen> {
   int currentIndex = 0;
+  late final List<Widget> _screens;
 
   @override
   void initState() {
     super.initState();
+    _screens = [
+      HomeScreen(onNavigateTab: _onTabSelect),
+      const AnalyticsScreen(),
+      const HistoryScreen(),
+      const ProfileScreen(),
+    ];
     AppOpenAdManager().setAdSuppressed(false);
     AuthService().updateLastActiveTime();
     _initLaunchPrompts();
@@ -42,43 +49,22 @@ class _MainScreenState extends State<MainScreen> {
   }
 
   void _onTabSelect(int index) {
-    setState(() {
-      currentIndex = index;
-    });
+    if (currentIndex != index) {
+      setState(() {
+        currentIndex = index;
+      });
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    final screens = [
-      HomeScreen(onNavigateTab: _onTabSelect),
-      const AnalyticsScreen(),
-      const HistoryScreen(),
-      const ProfileScreen(),
-    ];
-
     return Scaffold(
       extendBody: true,
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-
-      body: AnimatedSwitcher(
-        duration: const Duration(milliseconds: 300),
-        switchInCurve: Curves.easeOutCubic,
-        switchOutCurve: Curves.easeInCubic,
-        transitionBuilder: (child, animation) {
-          return FadeTransition(
-            opacity: animation,
-            child: ScaleTransition(
-              scale: Tween<double>(begin: 0.98, end: 1.0).animate(animation),
-              child: child,
-            ),
-          );
-        },
-        child: KeyedSubtree(
-          key: ValueKey<int>(currentIndex),
-          child: screens[currentIndex],
-        ),
+      body: IndexedStack(
+        index: currentIndex,
+        children: _screens,
       ),
-
       bottomNavigationBar: CustomBottomNav(
         currentIndex: currentIndex,
         onTap: _onTabSelect,

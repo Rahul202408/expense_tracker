@@ -1,4 +1,3 @@
-import 'dart:ui';
 import 'package:flutter/material.dart';
 import '../../../../widgets/three_d_tilt_card.dart';
 
@@ -33,21 +32,18 @@ class AnalyticsHeroCard extends StatelessWidget {
     final double incomeFraction = totalVolume > 0 ? (income / totalVolume).clamp(0.0, 1.0) : 0.5;
     final double expenseFraction = totalVolume > 0 ? (expense / totalVolume).clamp(0.0, 1.0) : 0.5;
 
-    return ThreeDTiltCard(
-      margin: const EdgeInsets.symmetric(vertical: 8),
-      maxTiltAngle: 0.05,
-      elevation: isDark ? 4 : 8,
-      shadowColor: isSurplus
-          ? const Color(0xFF10B981).withValues(alpha: 0.25)
-          : const Color(0xFFEF4444).withValues(alpha: 0.25),
-      borderRadius: BorderRadius.circular(28),
-      child: ClipRRect(
+    return RepaintBoundary(
+      child: ThreeDTiltCard(
+        margin: const EdgeInsets.symmetric(vertical: 8),
+        maxTiltAngle: 0.05,
+        elevation: isDark ? 4 : 8,
+        shadowColor: isSurplus
+            ? const Color(0xFF10B981).withValues(alpha: 0.25)
+            : const Color(0xFFEF4444).withValues(alpha: 0.25),
         borderRadius: BorderRadius.circular(28),
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
-          child: Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(22),
+        child: Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(22),
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(28),
               gradient: LinearGradient(
@@ -427,7 +423,6 @@ class AnalyticsHeroCard extends StatelessWidget {
             ),
           ),
         ),
-      ),
-    );
+      );
   }
 }

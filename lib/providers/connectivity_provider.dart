@@ -6,6 +6,9 @@ class ConnectivityProvider extends ChangeNotifier {
   final Connectivity _connectivity = Connectivity();
   StreamSubscription<List<ConnectivityResult>>? _subscription;
 
+  Timer? _onlineTimer;
+  bool _isDisposed = false;
+
   bool _isOffline = false;
   bool get isOffline => _isOffline;
 
@@ -15,6 +18,12 @@ class ConnectivityProvider extends ChangeNotifier {
   ConnectivityProvider() {
     _initConnectivity();
     _subscription = _connectivity.onConnectivityChanged.listen(_updateConnectionStatus);
+  }
+
+  void _safeNotifyListeners() {
+    if (!_isDisposed) {
+      notifyListeners();
+    }
   }
 
   Future<void> _initConnectivity() async {
@@ -27,6 +36,7 @@ class ConnectivityProvider extends ChangeNotifier {
   }
 
   void _updateConnectionStatus(List<ConnectivityResult> results) {
+    if (_isDisposed) return;
     final bool currentlyOffline = results.every((result) => result == ConnectivityResult.none);
 
     if (currentlyOffline != _isOffline) {
@@ -34,16 +44,19 @@ class ConnectivityProvider extends ChangeNotifier {
         // Was offline, now back online
         _wasOffline = true;
         _isOffline = false;
-        notifyListeners();
+        _safeNotifyListeners();
 
         // Hide "Back Online" badge after 3 seconds
-        Timer(const Duration(seconds: 3), () {
-          _wasOffline = false;
-          notifyListeners();
+        _onlineTimer?.cancel();
+        _onlineTimer = Timer(const Duration(seconds: 3), () {
+          if (!_isDisposed) {
+            _wasOffline = false;
+            _safeNotifyListeners();
+          }
         });
       } else {
         _isOffline = currentlyOffline;
-        notifyListeners();
+        _safeNotifyListeners();
       }
     }
   }
@@ -55,6 +68,8 @@ class ConnectivityProvider extends ChangeNotifier {
 
   @override
   void dispose() {
+    _isDisposed = true;
+    _onlineTimer?.cancel();
     _subscription?.cancel();
     super.dispose();
   }

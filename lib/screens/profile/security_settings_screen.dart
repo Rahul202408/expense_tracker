@@ -194,112 +194,117 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen> {
     }
   }
 
-  void _showSetPinDialog({VoidCallback? onSuccess}) {
+  Future<void> _showSetPinDialog({VoidCallback? onSuccess}) async {
     final TextEditingController pinController = TextEditingController();
     final TextEditingController confirmPinController = TextEditingController();
     final formKey = GlobalKey<FormState>();
 
-    showDialog(
-      context: context,
-      builder: (context) {
-        final isDark = Theme.of(context).brightness == Brightness.dark;
+    try {
+      await showDialog(
+        context: context,
+        builder: (context) {
+          final isDark = Theme.of(context).brightness == Brightness.dark;
 
-        return AlertDialog(
-          backgroundColor: isDark ? const Color(0xff1E293B) : Colors.white,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-          title: Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: const Color(0xff11998E).withValues(alpha: 0.15),
-                  shape: BoxShape.circle,
-                ),
-                child: const Icon(Icons.pin_rounded, color: Color(0xff11998E)),
-              ),
-              const SizedBox(width: 10),
-              Text(
-                _currentPin == null ? "Set Security PIN" : "Change Security PIN",
-                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-              ),
-            ],
-          ),
-          content: Form(
-            key: formKey,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
+          return AlertDialog(
+            backgroundColor: isDark ? const Color(0xff1E293B) : Colors.white,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+            title: Row(
               children: [
-                TextFormField(
-                  controller: pinController,
-                  keyboardType: TextInputType.number,
-                  obscureText: true,
-                  maxLength: 4,
-                  decoration: const InputDecoration(
-                    labelText: "Enter 4-Digit PIN",
-                    prefixIcon: Icon(Icons.lock_outline_rounded),
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: const Color(0xff11998E).withValues(alpha: 0.15),
+                    shape: BoxShape.circle,
                   ),
-                  validator: (val) {
-                    if (val == null || val.length != 4 || int.tryParse(val) == null) {
-                      return "Please enter a valid 4-digit PIN";
-                    }
-                    return null;
-                  },
+                  child: const Icon(Icons.pin_rounded, color: Color(0xff11998E)),
                 ),
-                const SizedBox(height: 10),
-                TextFormField(
-                  controller: confirmPinController,
-                  keyboardType: TextInputType.number,
-                  obscureText: true,
-                  maxLength: 4,
-                  decoration: const InputDecoration(
-                    labelText: "Confirm 4-Digit PIN",
-                    prefixIcon: Icon(Icons.lock_reset_rounded),
-                  ),
-                  validator: (val) {
-                    if (val != pinController.text) {
-                      return "PINs do not match";
-                    }
-                    return null;
-                  },
+                const SizedBox(width: 10),
+                Text(
+                  _currentPin == null ? "Set Security PIN" : "Change Security PIN",
+                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                 ),
               ],
             ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text("Cancel"),
-            ),
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xff11998E),
+            content: Form(
+              key: formKey,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  TextFormField(
+                    controller: pinController,
+                    keyboardType: TextInputType.number,
+                    obscureText: true,
+                    maxLength: 4,
+                    decoration: const InputDecoration(
+                      labelText: "Enter 4-Digit PIN",
+                      prefixIcon: Icon(Icons.lock_outline_rounded),
+                    ),
+                    validator: (val) {
+                      if (val == null || val.length != 4 || int.tryParse(val) == null) {
+                        return "Please enter a valid 4-digit PIN";
+                      }
+                      return null;
+                    },
+                  ),
+                  const SizedBox(height: 10),
+                  TextFormField(
+                    controller: confirmPinController,
+                    keyboardType: TextInputType.number,
+                    obscureText: true,
+                    maxLength: 4,
+                    decoration: const InputDecoration(
+                      labelText: "Confirm 4-Digit PIN",
+                      prefixIcon: Icon(Icons.lock_reset_rounded),
+                    ),
+                    validator: (val) {
+                      if (val != pinController.text) {
+                        return "PINs do not match";
+                      }
+                      return null;
+                    },
+                  ),
+                ],
               ),
-              onPressed: () async {
-                if (formKey.currentState!.validate()) {
-                  await _securityService.setPin(pinController.text);
-                  setState(() {
-                    _currentPin = pinController.text;
-                  });
-
-                  if (context.mounted) {
-                    Navigator.pop(context);
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text("Security PIN Saved Successfully!"),
-                        backgroundColor: Colors.teal,
-                      ),
-                    );
-                  }
-
-                  if (onSuccess != null) onSuccess();
-                }
-              },
-              child: const Text("Save PIN"),
             ),
-          ],
-        );
-      },
-    );
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text("Cancel"),
+              ),
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xff11998E),
+                ),
+                onPressed: () async {
+                  if (formKey.currentState!.validate()) {
+                    await _securityService.setPin(pinController.text);
+                    setState(() {
+                      _currentPin = pinController.text;
+                    });
+
+                    if (context.mounted) {
+                      Navigator.pop(context);
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text("Security PIN Saved Successfully!"),
+                          backgroundColor: Colors.teal,
+                        ),
+                      );
+                    }
+
+                    if (onSuccess != null) onSuccess();
+                  }
+                },
+                child: const Text("Save PIN"),
+              ),
+            ],
+          );
+        },
+      );
+    } finally {
+      pinController.dispose();
+      confirmPinController.dispose();
+    }
   }
 
   @override

@@ -28,12 +28,19 @@ enum TypeFilter { all, expense, income }
 class _HistoryScreenState extends State<HistoryScreen> {
   final TextEditingController searchController = TextEditingController();
   final TransactionService _transactionService = TransactionService();
+  late Stream<List<TransactionModel>> _transactionStream;
   String searchText = "";
   String selectedCategory = "All";
   String selectedDateFilter = "All";
   TypeFilter selectedTypeFilter = TypeFilter.all;
   SortOption selectedSortOption = SortOption.newest;
   List<TransactionModel> _currentFilteredList = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _transactionStream = _transactionService.getTransactions();
+  }
 
   void _handleExport(BuildContext context, bool isDark) {
     if (_currentFilteredList.isEmpty) {
@@ -588,14 +595,23 @@ class _HistoryScreenState extends State<HistoryScreen> {
         children: [
           Expanded(
             child: StreamBuilder<List<TransactionModel>>(
-              stream: _transactionService.getTransactions(),
+              stream: _transactionStream,
+              initialData: TransactionService.cachedTransactions,
               builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting &&
-                    !snapshot.hasData) {
+                final bool isWaiting =
+                    (snapshot.connectionState == ConnectionState.waiting &&
+                            !snapshot.hasData) ||
+                        (snapshot.data == null &&
+                            TransactionService.cachedTransactions == null &&
+                            !snapshot.hasError);
+
+                if (isWaiting) {
                   return const HistoryListSkeleton();
                 }
 
-                final transactions = snapshot.data ?? [];
+                final transactions = snapshot.data ??
+                    TransactionService.cachedTransactions ??
+                    [];
                 final now = DateTime.now();
 
                 // Filtering logic

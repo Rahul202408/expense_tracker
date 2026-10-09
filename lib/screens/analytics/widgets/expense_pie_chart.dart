@@ -1,4 +1,3 @@
-import 'dart:ui';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import '../../../../widgets/three_d_tilt_card.dart';
@@ -80,19 +79,16 @@ class _ExpensePieChartState extends State<ExpensePieChart> {
         ? Colors.white.withValues(alpha: 0.14)
         : Colors.white.withValues(alpha: 0.85);
 
-    return ThreeDTiltCard(
-      margin: const EdgeInsets.symmetric(vertical: 12),
-      maxTiltAngle: 0.08,
-      elevation: isDark ? 3 : 8,
-      shadowColor: touchedIndex >= 0
-          ? sectionColors[touchedIndex % sectionColors.length]
-          : const Color(0xff11998E),
-      borderRadius: BorderRadius.circular(28),
-      child: ClipRRect(
+    return RepaintBoundary(
+      child: ThreeDTiltCard(
+        margin: const EdgeInsets.symmetric(vertical: 12),
+        maxTiltAngle: 0.08,
+        elevation: isDark ? 3 : 8,
+        shadowColor: touchedIndex >= 0
+            ? sectionColors[touchedIndex % sectionColors.length]
+            : const Color(0xff11998E),
         borderRadius: BorderRadius.circular(28),
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
-          child: Container(
+        child: Container(
             padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
               color: cardBgColor,
@@ -284,10 +280,9 @@ class _ExpensePieChartState extends State<ExpensePieChart> {
           ),
         ),
       ),
-        ),
-      ),
-    );
-  }
+    ),
+  );
+}
 
   Widget _buildBadgeWidget(Color color) {
     return Container(

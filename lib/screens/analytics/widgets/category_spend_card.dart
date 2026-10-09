@@ -1,4 +1,3 @@
-import 'dart:ui';
 import 'package:flutter/material.dart';
 
 class CategorySpendCard extends StatelessWidget {
@@ -103,13 +102,10 @@ class CategorySpendCard extends StatelessWidget {
         ? Colors.white.withValues(alpha: 0.10)
         : Colors.white.withValues(alpha: 0.85);
 
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(20),
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-        child: Container(
-          margin: const EdgeInsets.only(bottom: 12),
-          padding: const EdgeInsets.all(16),
+    return RepaintBoundary(
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 12),
+        padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
             color: cardBgColor,
             borderRadius: BorderRadius.circular(20),
@@ -277,8 +273,7 @@ class CategorySpendCard extends StatelessWidget {
           ),
         ],
       ),
-        ),
-      ),
-    );
-  }
+    ),
+  );
+}
 }

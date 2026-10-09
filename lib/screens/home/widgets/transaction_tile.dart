@@ -67,11 +67,12 @@ class TransactionTile extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: ThreeDTiltCard(
-      margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 7),
-      maxTiltAngle: 0.06,
-      elevation: isDark ? 2 : 6,
-      shadowColor: isDark ? Colors.black : iconColor,
-      borderRadius: BorderRadius.circular(22),
+        enableTilt: false,
+        margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 7),
+        maxTiltAngle: 0.06,
+        elevation: isDark ? 2 : 6,
+        shadowColor: isDark ? Colors.black : iconColor,
+        borderRadius: BorderRadius.circular(22),
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
         decoration: BoxDecoration(

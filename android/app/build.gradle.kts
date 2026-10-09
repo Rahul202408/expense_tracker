@@ -31,7 +31,7 @@ android {
 
     defaultConfig {
         applicationId = "com.trtech.expense_tracker"
-        minSdk = 23
+        minSdk = 24
         targetSdk = 36
         versionCode = flutter.versionCode
         versionName = flutter.versionName
@@ -48,12 +48,8 @@ android {
 
     buildTypes {
         release {
-            isMinifyEnabled = true
-            isShrinkResources = true
-            proguardFiles(
-                getDefaultProguardFile("proguard-android-optimize.txt"),
-                "proguard-rules.pro"
-            )
+            isMinifyEnabled = false
+            isShrinkResources = false
             signingConfig = if (keystorePropertiesFile.exists()) {
                 signingConfigs.getByName("release")
             } else {
@@ -64,7 +60,7 @@ android {
 
     sourceSets {
         getByName("main") {
-            java.setSrcDirs(listOf("src/main/kotlin"))
+            java.setSrcDirs(listOf("src/main/kotlin", "src/main/java"))
         }
     }
 }

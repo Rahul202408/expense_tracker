@@ -48,6 +48,26 @@ class InAppPurchaseService {
 
   Function(bool isPro, String? planId)? onProStatusChanged;
 
+  final StreamController<String> _purchaseCompletedController =
+      StreamController<String>.broadcast();
+  /// Stream that emits the purchased plan ID ONLY when Google Play genuinely confirms payment
+  Stream<String> get onPurchaseCompleted => _purchaseCompletedController.stream;
+
+  final StreamController<void> _purchaseCanceledController =
+      StreamController<void>.broadcast();
+  /// Stream that emits when the user cancels the Google Play billing flow or closes without paying
+  Stream<void> get onPurchaseCanceled => _purchaseCanceledController.stream;
+
+  final StreamController<String> _purchaseErrorController =
+      StreamController<String>.broadcast();
+  /// Stream that emits when Google Play encounters an error during payment
+  Stream<String> get onPurchaseError => _purchaseErrorController.stream;
+
+  /// For debug/testing: trigger purchase completion stream manually
+  void notifyPurchaseSuccessForTesting(String planId) {
+    _purchaseCompletedController.add(planId);
+  }
+
   /// Initialize In-App Purchase and listen to purchase updates
   Future<void> initialize() async {
     try {
@@ -225,18 +245,32 @@ class InAppPurchaseService {
       if (purchaseDetails.status == PurchaseStatus.pending) {
         debugPrint("InAppPurchase: Purchase pending for ${purchaseDetails.productID}");
       } else if (purchaseDetails.status == PurchaseStatus.error) {
-        debugPrint("InAppPurchase: Purchase error: ${purchaseDetails.error?.message}");
+        final errorMsg = purchaseDetails.error?.message ?? "Payment encountered an error";
+        debugPrint("InAppPurchase: Purchase error: $errorMsg");
+        _purchaseErrorController.add(errorMsg);
         if (purchaseDetails.pendingCompletePurchase) {
           await _iap.completePurchase(purchaseDetails);
         }
       } else if (purchaseDetails.status == PurchaseStatus.canceled) {
         debugPrint("InAppPurchase: Purchase canceled for ${purchaseDetails.productID}");
+        _purchaseCanceledController.add(null);
         if (purchaseDetails.pendingCompletePurchase) {
           await _iap.completePurchase(purchaseDetails);
         }
-      } else if (purchaseDetails.status == PurchaseStatus.purchased ||
-          purchaseDetails.status == PurchaseStatus.restored) {
-        // Valid purchase
+      } else if (purchaseDetails.status == PurchaseStatus.purchased) {
+        // Genuine new payment confirmed by Google Play!
+        debugPrint("InAppPurchase: Payment CONFIRMED by Google Play for ${purchaseDetails.productID}");
+        await _deliverProduct(purchaseDetails.productID);
+
+        if (purchaseDetails.pendingCompletePurchase) {
+          await _iap.completePurchase(purchaseDetails);
+        }
+
+        // Fire confirmation event ONLY when user has successfully paid
+        _purchaseCompletedController.add(purchaseDetails.productID);
+      } else if (purchaseDetails.status == PurchaseStatus.restored) {
+        // Restored existing purchase
+        debugPrint("InAppPurchase: Purchase restored for ${purchaseDetails.productID}");
         await _deliverProduct(purchaseDetails.productID);
 
         if (purchaseDetails.pendingCompletePurchase) {
@@ -284,14 +318,29 @@ class InAppPurchaseService {
     }
   }
 
-  /// Load cached Pro status from SharedPreferences
+  /// Clear Pro status locally (e.g., on logout or for a free user)
+  Future<void> clearProStatusLocally() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_prefIsProKey, false);
+    await prefs.remove(_prefPlanKey);
+    await prefs.remove(_prefPurchaseDateKey);
+    if (onProStatusChanged != null) {
+      onProStatusChanged!(false, null);
+    }
+  }
+
+  /// Load cached Pro status from SharedPreferences (only if user is logged in)
   Future<bool> getIsPro() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return false;
     final prefs = await SharedPreferences.getInstance();
     return prefs.getBool(_prefIsProKey) ?? false;
   }
 
   /// Load current active plan ID
   Future<String?> getActivePlanId() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return null;
     final prefs = await SharedPreferences.getInstance();
     return prefs.getString(_prefPlanKey);
   }
@@ -302,6 +351,40 @@ class InAppPurchaseService {
       await _iap.restorePurchases();
     } catch (e) {
       debugPrint("InAppPurchase: Restore error: $e");
+    }
+  }
+
+  /// Sync Pro subscription state from Firebase Firestore (e.g. across installs/devices/new logins)
+  Future<void> syncProStatusFromFirestore() async {
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null) {
+        await clearProStatusLocally();
+        return;
+      }
+      final doc = await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
+      if (doc.exists && doc.data() != null) {
+        final isPro = doc.data()!['isPro'] as bool? ?? false;
+        final planId = doc.data()!['proPlan'] as String?;
+        if (isPro) {
+          final prefs = await SharedPreferences.getInstance();
+          await prefs.setBool(_prefIsProKey, true);
+          if (planId != null) {
+            await prefs.setString(_prefPlanKey, planId);
+          }
+          if (onProStatusChanged != null) {
+            onProStatusChanged!(true, planId);
+          }
+        } else {
+          // Explicitly clear local Pro cache for free users!
+          await clearProStatusLocally();
+        }
+      } else {
+        // Document does not exist or user has never bought Pro: clear local cache!
+        await clearProStatusLocally();
+      }
+    } catch (e) {
+      debugPrint("InAppPurchase: Error syncing Pro status from Firestore: $e");
     }
   }
 

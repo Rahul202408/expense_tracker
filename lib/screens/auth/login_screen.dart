@@ -1,6 +1,9 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
+import '../../providers/currency_provider.dart';
+import '../../providers/pro_provider.dart';
 import '../../widgets/primary_button.dart';
 import '../../widgets/three_d_tilt_card.dart';
 import 'signup_screen.dart';
@@ -56,6 +59,8 @@ class _LoginScreenState extends State<LoginScreen> {
         }
 
         if (!mounted) return;
+        Provider.of<CurrencyProvider>(context, listen: false).syncFromFirestore();
+        Provider.of<ProProvider>(context, listen: false).syncFromFirestore();
         Navigator.pushAndRemoveUntil(
           context,
           MaterialPageRoute(builder: (_) => const MainScreen()),
@@ -106,6 +111,8 @@ class _LoginScreenState extends State<LoginScreen> {
       }
 
       if (!mounted) return;
+      Provider.of<CurrencyProvider>(context, listen: false).syncFromFirestore();
+      Provider.of<ProProvider>(context, listen: false).syncFromFirestore();
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text("Login Successful"),
@@ -113,9 +120,10 @@ class _LoginScreenState extends State<LoginScreen> {
         ),
       );
 
-      Navigator.pushReplacement(
+      Navigator.pushAndRemoveUntil(
         context,
         MaterialPageRoute(builder: (_) => const MainScreen()),
+        (route) => false,
       );
     } else {
       final isAuthMismatch = result.toLowerCase().contains("credential") ||
@@ -500,6 +508,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
               // 3D Perspective Hero Card
               ThreeDTiltCard(
+                enableTilt: false,
                 maxTiltAngle: 0.05,
                 elevation: isDark ? 4 : 12,
                 shadowColor: const Color(0xff1E3C72),
@@ -561,36 +570,60 @@ class _LoginScreenState extends State<LoginScreen> {
                         const SizedBox(height: 12),
 
                         Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            Checkbox(
-                              value: rememberMe,
-                              activeColor: const Color(0xff11998E),
-                              onChanged: (value) {
-                                setState(() {
-                                  rememberMe = value!;
-                                });
-                              },
-                            ),
-
-                            Text(
-                              "Remember Me",
-                              style: TextStyle(
-                                color: isDark ? Colors.grey.shade300 : const Color(0xff2D3748),
-                                fontSize: 13,
-                                fontWeight: FontWeight.w600,
+                            Flexible(
+                              child: InkWell(
+                                onTap: () => setState(() => rememberMe = !rememberMe),
+                                borderRadius: BorderRadius.circular(6),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    SizedBox(
+                                      width: 24,
+                                      height: 24,
+                                      child: Checkbox(
+                                        value: rememberMe,
+                                        activeColor: const Color(0xff11998E),
+                                        materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                        visualDensity: VisualDensity.compact,
+                                        onChanged: (value) {
+                                          setState(() {
+                                            rememberMe = value ?? false;
+                                          });
+                                        },
+                                      ),
+                                    ),
+                                    const SizedBox(width: 6),
+                                    Flexible(
+                                      child: Text(
+                                        "Remember Me",
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: TextStyle(
+                                          color: isDark ? Colors.grey.shade300 : const Color(0xff2D3748),
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
                               ),
                             ),
-
-                            const Spacer(),
-
                             TextButton(
+                              style: TextButton.styleFrom(
+                                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                                minimumSize: Size.zero,
+                                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                              ),
                               onPressed: _showForgotPasswordDialog,
                               child: Text(
                                 "Forgot Password?",
                                 style: TextStyle(
                                   color: isDark ? const Color(0xff38EF7D) : const Color(0xff1E3C72),
                                   fontWeight: FontWeight.w700,
-                                  fontSize: 13,
+                                  fontSize: 12,
                                 ),
                               ),
                             ),

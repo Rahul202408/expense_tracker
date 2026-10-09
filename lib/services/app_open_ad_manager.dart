@@ -124,7 +124,10 @@ class AppOpenAdManager with WidgetsBindingObserver {
     }
 
     // 3. User is not authenticated
-    final currentUser = FirebaseAuth.instance.currentUser;
+    User? currentUser;
+    try {
+      currentUser = FirebaseAuth.instance.currentUser;
+    } catch (_) {}
     if (currentUser == null) {
       if (kDebugMode) {
         print('AppOpenAdManager: User not logged in, suppressing App Open Ad.');

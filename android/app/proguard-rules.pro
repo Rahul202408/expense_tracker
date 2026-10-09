@@ -62,6 +62,26 @@
 -dontwarn java.lang.invoke.**
 -dontwarn javax.annotation.**
 
+# Flutter Community Plus plugins (connectivity_plus, share_plus)
+-keep class dev.fluttercommunity.plus.** { *; }
+-dontwarn dev.fluttercommunity.plus.**
+
+# Flutter Native / Timezone plugins
+-keep class net.jonhanson.flutter_native_timezone.** { *; }
+-keep class com.whelkhosting.flutter_timezone.** { *; }
+
+# Printing & PDF plugins
+-keep class net.nfet.flutter.printing.** { *; }
+-dontwarn net.nfet.flutter.printing.**
+
+# Gson & JSON
+-keep class com.google.gson.** { *; }
+-dontwarn com.google.gson.**
+
+# AndroidX Core & AppCompat
+-keep class androidx.appcompat.** { *; }
+-dontwarn androidx.appcompat.**
+
 # Suppress harmless third-party build warnings
 -dontwarn com.google.firebase.**
 -dontwarn com.google.android.gms.**

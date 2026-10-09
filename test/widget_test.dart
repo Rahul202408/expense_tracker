@@ -1,30 +1,51 @@
-// This is a basic Flutter widget test.
-//
-// To perform an interaction with a widget in your test, use the WidgetTester
-// utility in the flutter_test package. For example, you can send tap and scroll
-// gestures. You can also use WidgetTester to find child widgets in the widget
-// tree, read text, and verify that the values of widget properties are correct.
-
-import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-
-import 'package:expense_tracker/main.dart';
+import 'package:expense_tracker/models/transaction_model.dart';
+import 'package:expense_tracker/utils/security_validator.dart';
 
 void main() {
-  testWidgets('Counter increments smoke test', (WidgetTester tester) async {
-    // Build our app and trigger a frame.
-    await tester.pumpWidget(const ExpenseTrackerApp());
+  group('TransactionModel Tests', () {
+    test('TransactionModel toMap and fromMap serialization', () {
+      final date = DateTime(2026, 1, 15, 10, 30);
+      final model = TransactionModel(
+        id: 'test_id_123',
+        title: 'Coffee',
+        category: 'Food',
+        amount: 150.0,
+        isExpense: true,
+        date: date,
+      );
 
-    // Verify that our counter starts at 0.
-    expect(find.text('0'), findsOneWidget);
-    expect(find.text('1'), findsNothing);
+      final map = model.toMap();
+      expect(map['title'], 'Coffee');
+      expect(map['category'], 'Food');
+      expect(map['amount'], 150.0);
+      expect(map['isExpense'], true);
 
-    // Tap the '+' icon and trigger a frame.
-    await tester.tap(find.byIcon(Icons.add));
-    await tester.pump();
+      final reconstructed = TransactionModel.fromMap(map, 'test_id_123');
+      expect(reconstructed.id, 'test_id_123');
+      expect(reconstructed.title, 'Coffee');
+      expect(reconstructed.category, 'Food');
+      expect(reconstructed.amount, 150.0);
+      expect(reconstructed.isExpense, true);
+      expect(reconstructed.date.millisecondsSinceEpoch, date.millisecondsSinceEpoch);
+    });
+  });
 
-    // Verify that our counter has incremented.
-    expect(find.text('0'), findsNothing);
-    expect(find.text('1'), findsOneWidget);
+  group('SecurityValidator Tests', () {
+    test('sanitize strips harmful HTML tags', () {
+      expect(SecurityValidator.sanitize('  Normal Text  '), 'Normal Text');
+      expect(SecurityValidator.sanitize('<script>alert("xss")</script>'), 'alert("xss")');
+    });
+
+    test('validateEmail checks email format (null on valid, string on error)', () {
+      expect(SecurityValidator.validateEmail('test@example.com'), isNull);
+      expect(SecurityValidator.validateEmail('invalid-email'), isNotNull);
+    });
+
+    test('validatePhone checks valid Indian phone numbers', () {
+      expect(SecurityValidator.validatePhone('9876543210'), isNotNull); // Sequential descending rejected
+      expect(SecurityValidator.validatePhone('9825134769'), isNull); // Valid random mobile number
+      expect(SecurityValidator.validatePhone('123'), isNotNull); // Too short
+    });
   });
 }

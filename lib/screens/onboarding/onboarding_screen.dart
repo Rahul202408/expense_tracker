@@ -28,9 +28,12 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   }
 
   Future<void> finishOnboarding() async {
-    final prefs = await SharedPreferences.getInstance();
-
-    await prefs.setBool("onboarding", true);
+    try {
+      final prefs = await SharedPreferences.getInstance().timeout(const Duration(seconds: 2));
+      await prefs.setBool("onboarding", true);
+    } catch (e) {
+      debugPrint("finishOnboarding SharedPreferences note: $e");
+    }
 
     if (!mounted) return;
 
@@ -58,11 +61,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   }
 
   void skip() {
-    _pageController.animateToPage(
-      onboardingData.length - 1,
-      duration: const Duration(milliseconds: 500),
-      curve: Curves.easeInOut,
-    );
+    finishOnboarding();
   }
 
   @override
@@ -111,9 +110,33 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                       mainAxisAlignment: MainAxisAlignment.center,
 
                       children: [
-                        Image.asset(page.image, height: 320),
+                        ConstrainedBox(
+                          constraints: const BoxConstraints(maxHeight: 280),
+                          child: Image.asset(
+                            page.image,
+                            height: 280,
+                            fit: BoxFit.contain,
+                            errorBuilder: (context, error, stackTrace) {
+                              return Container(
+                                height: 200,
+                                width: double.infinity,
+                                decoration: BoxDecoration(
+                                  color: AppColors.primary.withValues(alpha: 0.08),
+                                  borderRadius: BorderRadius.circular(24),
+                                ),
+                                child: const Center(
+                                  child: Icon(
+                                    Icons.account_balance_wallet_rounded,
+                                    size: 64,
+                                    color: AppColors.primary,
+                                  ),
+                                ),
+                              );
+                            },
+                          ),
+                        ),
 
-                        const SizedBox(height: 40),
+                        const SizedBox(height: 32),
 
                         Text(
                           page.title,
@@ -121,7 +144,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                           style: AppTextStyles.title,
                         ),
 
-                        const SizedBox(height: 16),
+                        const SizedBox(height: 14),
 
                         Padding(
                           padding: const EdgeInsets.symmetric(horizontal: 10),

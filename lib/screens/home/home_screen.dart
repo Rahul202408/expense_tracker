@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'dart:async';
 import 'dart:ui';
 import 'package:provider/provider.dart';
 
@@ -33,6 +34,47 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   final TransactionService _transactionService = TransactionService();
   final DashboardService _dashboardService = DashboardService();
+  late Stream<List<TransactionModel>> _transactionStream;
+  double _lastCheckedIncome = -1;
+  double _lastCheckedExpense = -1;
+  bool _isTimeoutElapsed = false;
+  Timer? _loadingTimeoutTimer;
+
+  @override
+  void initState() {
+    super.initState();
+    _transactionStream = _transactionService.getTransactions();
+    _startSafetyTimer();
+  }
+
+  void _startSafetyTimer() {
+    _loadingTimeoutTimer?.cancel();
+    _isTimeoutElapsed = false;
+    // Failsafe: Ensures loading shimmer NEVER runs infinitely, max 3.5 seconds
+    _loadingTimeoutTimer = Timer(const Duration(milliseconds: 3500), () {
+      if (mounted && !_isTimeoutElapsed) {
+        setState(() {
+          _isTimeoutElapsed = true;
+        });
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _loadingTimeoutTimer?.cancel();
+    super.dispose();
+  }
+
+  Future<void> _handleRefresh() async {
+    _startSafetyTimer();
+    await _transactionService.fetchTransactionsOnce();
+    if (mounted) {
+      setState(() {
+        _transactionStream = _transactionService.getTransactions();
+      });
+    }
+  }
 
   Future<bool> _showDeleteConfirmDialog(
     BuildContext context,
@@ -244,55 +286,83 @@ class _HomeScreenState extends State<HomeScreen> {
     return Scaffold(
       backgroundColor: backgroundColor,
       body: SafeArea(
-        child: SingleChildScrollView(
-          physics: const BouncingScrollPhysics(),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const SizedBox(height: 16),
+        child: RefreshIndicator(
+          onRefresh: _handleRefresh,
+          color: const Color(0xff10B981),
+          backgroundColor: isDark ? const Color(0xff1E293B) : Colors.white,
+          child: SingleChildScrollView(
+            physics: const AlwaysScrollableScrollPhysics(
+              parent: BouncingScrollPhysics(),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const SizedBox(height: 16),
 
-              // Header with Profile Avatar tap callback
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 20),
-                child: HomeHeader(
-                  onProfileTap: () {
-                    if (widget.onNavigateTab != null) {
-                      widget.onNavigateTab!(3);
-                    } else {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => const ProfileScreen(),
-                        ),
-                      );
-                    }
-                  },
+                // Header with Profile Avatar tap callback
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  child: HomeHeader(
+                    onProfileTap: () {
+                      if (widget.onNavigateTab != null) {
+                        widget.onNavigateTab!(3);
+                      } else {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => const ProfileScreen(),
+                          ),
+                        );
+                      }
+                    },
+                  ),
                 ),
-              ),
 
-              const SizedBox(height: 12),
+                const SizedBox(height: 12),
 
-              StreamBuilder<List<TransactionModel>>(
-                stream: _transactionService.getTransactions(),
-                builder: (context, snapshot) {
-                  // Beautiful Shimmer UI while loading initial data
-                  if (snapshot.connectionState == ConnectionState.waiting &&
-                      !snapshot.hasData) {
-                    return const HomeDashboardSkeleton();
+                StreamBuilder<List<TransactionModel>>(
+                  stream: _transactionStream,
+                  initialData: TransactionService.cachedTransactions,
+                  builder: (context, snapshot) {
+                    // Beautiful Shimmer UI while loading initial data from Firebase (strictly capped at max 3.5s)
+                    final bool isWaiting =
+                        !_isTimeoutElapsed &&
+                        ((snapshot.connectionState == ConnectionState.waiting &&
+                                !snapshot.hasData) ||
+                            (snapshot.data == null &&
+                                TransactionService.cachedTransactions == null &&
+                                !snapshot.hasError));
+
+                    if (isWaiting) {
+                      return const HomeDashboardSkeleton();
+                    }
+
+                    // Friendly error state if database fetch failed and no cached data exists
+                    if (snapshot.hasError &&
+                        (snapshot.data == null || snapshot.data!.isEmpty) &&
+                        (TransactionService.cachedTransactions == null ||
+                            TransactionService.cachedTransactions!.isEmpty)) {
+                      return _buildErrorState(context, isDark);
+                    }
+
+                    final transactions = snapshot.data ??
+                        TransactionService.cachedTransactions ??
+                        [];
+                    final income = _dashboardService.totalIncome(transactions);
+                    final expense = _dashboardService.totalExpense(transactions);
+                    final balance = _dashboardService.totalBalance(transactions);
+
+                  // Check budget threshold alerts (80% / 100%) only when values change
+                  if (expense != _lastCheckedExpense || income != _lastCheckedIncome) {
+                    _lastCheckedExpense = expense;
+                    _lastCheckedIncome = income;
+                    WidgetsBinding.instance.addPostFrameCallback((_) {
+                      NotificationService().checkAndTriggerBudgetAlert(
+                        expense: expense,
+                        income: income,
+                      );
+                    });
                   }
-
-                  final transactions = snapshot.data ?? [];
-                  final income = _dashboardService.totalIncome(transactions);
-                  final expense = _dashboardService.totalExpense(transactions);
-                  final balance = _dashboardService.totalBalance(transactions);
-
-                  // Check budget threshold alerts (80% / 100%)
-                  WidgetsBinding.instance.addPostFrameCallback((_) {
-                    NotificationService().checkAndTriggerBudgetAlert(
-                      expense: expense,
-                      income: income,
-                    );
-                  });
 
                   // Take only the top 6 most recent transactions for the dashboard to guarantee 120 FPS
                   final recentTransactions = transactions.take(6).toList();
@@ -399,88 +469,88 @@ class _HomeScreenState extends State<HomeScreen> {
                       else
                         Column(
                           children: [
-                            ListView.builder(
-                              shrinkWrap: true,
-                              physics: const NeverScrollableScrollPhysics(),
-                              itemCount: recentTransactions.length,
-                              itemBuilder: (context, index) {
-                                final transaction = recentTransactions[index];
-
-                                final tileWidget = Dismissible(
-                                  key: Key(transaction.id),
-                                  background: Container(
-                                    margin: const EdgeInsets.symmetric(
-                                        horizontal: 20, vertical: 7),
-                                    decoration: BoxDecoration(
-                                      color: Colors.red.shade400,
-                                      borderRadius: BorderRadius.circular(22),
-                                    ),
-                                    alignment: Alignment.centerRight,
-                                    padding: const EdgeInsets.only(right: 25),
-                                    child: const Icon(
-                                      Icons.delete_rounded,
-                                      color: Colors.white,
-                                      size: 28,
-                                    ),
-                                  ),
-                                  direction: DismissDirection.endToStart,
-                                  confirmDismiss: (direction) async {
-                                    return await _showDeleteConfirmDialog(
-                                      context,
-                                      transaction.title,
-                                      isDark,
-                                    );
-                                  },
-                                  onDismissed: (_) async {
-                                    await _transactionService.deleteTransaction(
-                                      transaction.id,
-                                    );
-
-                                    if (context.mounted) {
-                                      ScaffoldMessenger.of(context).showSnackBar(
-                                        const SnackBar(
-                                          content: Text("Transaction Deleted"),
-                                          backgroundColor: Colors.redAccent,
+                            for (int index = 0; index < recentTransactions.length; index++) ...[
+                              Builder(
+                                builder: (context) {
+                                  final transaction = recentTransactions[index];
+                                  final tileWidget = RepaintBoundary(
+                                    child: Dismissible(
+                                      key: Key(transaction.id),
+                                      background: Container(
+                                        margin: const EdgeInsets.symmetric(
+                                            horizontal: 20, vertical: 7),
+                                        decoration: BoxDecoration(
+                                          color: Colors.red.shade400,
+                                          borderRadius: BorderRadius.circular(22),
                                         ),
-                                      );
-                                    }
-                                  },
-                                  child: TransactionTile(
-                                    icon: _getCategoryIcon(transaction.category),
-                                    iconColor: transaction.isExpense
-                                        ? Colors.red
-                                        : Colors.green,
-                                    title: transaction.title,
-                                    category: transaction.category,
-                                    amount: transaction.amount.toStringAsFixed(2),
-                                    isExpense: transaction.isExpense,
-                                    date: transaction.date,
-                                    onTap: () {
-                                      Navigator.push(
-                                        context,
-                                        MaterialPageRoute(
-                                          builder: (_) => AddTransactionScreen(
-                                            transaction: transaction,
-                                          ),
+                                        alignment: Alignment.centerRight,
+                                        padding: const EdgeInsets.only(right: 25),
+                                        child: const Icon(
+                                          Icons.delete_rounded,
+                                          color: Colors.white,
+                                          size: 28,
                                         ),
-                                      );
-                                    },
-                                  ),
-                                );
+                                      ),
+                                      direction: DismissDirection.endToStart,
+                                      confirmDismiss: (direction) async {
+                                        return await _showDeleteConfirmDialog(
+                                          context,
+                                          transaction.title,
+                                          isDark,
+                                        );
+                                      },
+                                      onDismissed: (_) async {
+                                        await _transactionService.deleteTransaction(
+                                          transaction.id,
+                                        );
 
-                                // Show Native Ad after 3rd transaction
-                                if (index == 2) {
-                                  return Column(
-                                    children: [
-                                      tileWidget,
-                                      const NativeAdWidget(),
-                                    ],
+                                        if (context.mounted) {
+                                          ScaffoldMessenger.of(context).showSnackBar(
+                                            const SnackBar(
+                                              content: Text("Transaction Deleted"),
+                                              backgroundColor: Colors.redAccent,
+                                            ),
+                                          );
+                                        }
+                                      },
+                                      child: TransactionTile(
+                                        icon: _getCategoryIcon(transaction.category),
+                                        iconColor: transaction.isExpense
+                                            ? Colors.red
+                                            : Colors.green,
+                                        title: transaction.title,
+                                        category: transaction.category,
+                                        amount: transaction.amount.toStringAsFixed(2),
+                                        isExpense: transaction.isExpense,
+                                        date: transaction.date,
+                                        onTap: () {
+                                          Navigator.push(
+                                            context,
+                                            MaterialPageRoute(
+                                              builder: (_) => AddTransactionScreen(
+                                                transaction: transaction,
+                                              ),
+                                            ),
+                                          );
+                                        },
+                                      ),
+                                    ),
                                   );
-                                }
 
-                                return tileWidget;
-                              },
-                            ),
+                                  if (index == 2) {
+                                    return Column(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        tileWidget,
+                                        const NativeAdWidget(),
+                                      ],
+                                    );
+                                  }
+
+                                  return tileWidget;
+                                },
+                              ),
+                            ],
                             if (transactions.isNotEmpty && transactions.length <= 2)
                               const NativeAdWidget(),
                             if (transactions.length > 6)
@@ -538,7 +608,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           ],
                         ),
 
-                      const SizedBox(height: 110),
+                      const SizedBox(height: 125),
                     ],
                   );
                 },
@@ -547,8 +617,9 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ),
       ),
-    );
-  }
+    ),
+  );
+}
 
   IconData _getCategoryIcon(String category) {
     switch (category) {
@@ -660,6 +731,84 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildErrorState(BuildContext context, bool isDark) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 30),
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(24),
+        decoration: BoxDecoration(
+          color: isDark ? const Color(0xff1E293B) : Colors.white,
+          borderRadius: BorderRadius.circular(22),
+          border: Border.all(
+            color: const Color(0xffEF4444).withValues(alpha: 0.25),
+            width: 1.5,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.05),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Column(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: const Color(0xffEF4444).withValues(alpha: 0.12),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                Icons.cloud_off_rounded,
+                color: Color(0xffEF4444),
+                size: 36,
+              ),
+            ),
+            const SizedBox(height: 14),
+            Text(
+              "Unable to load transactions",
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w800,
+                color: isDark ? Colors.white : const Color(0xff0F172A),
+              ),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              "Please check your internet connection or tap below to retry.",
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 12.5,
+                color: isDark ? Colors.white60 : const Color(0xff64748B),
+              ),
+            ),
+            const SizedBox(height: 16),
+            ElevatedButton.icon(
+              onPressed: () {
+                setState(() {
+                  _transactionStream = _transactionService.getTransactions();
+                });
+              },
+              icon: const Icon(Icons.refresh_rounded, size: 18),
+              label: const Text("Retry Connection"),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xff10B981),
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 11),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                elevation: 4,
+              ),
+            ),
+          ],
         ),
       ),
     );

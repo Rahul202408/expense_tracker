@@ -1,11 +1,14 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../providers/pro_provider.dart';
 import '../../providers/currency_provider.dart';
 import '../../services/in_app_purchase_service.dart';
 import '../../services/firebase_analytics_service.dart';
+import '../../widgets/pro_thank_you_dialog.dart';
 
 class ProScreen extends StatefulWidget {
   const ProScreen({super.key});
@@ -14,20 +17,122 @@ class ProScreen extends StatefulWidget {
   State<ProScreen> createState() => _ProScreenState();
 }
 
-class _ProScreenState extends State<ProScreen> {
+class _ProScreenState extends State<ProScreen> with WidgetsBindingObserver {
   // Default selected plan is Yearly (Most Popular)
   String _selectedPlanId = InAppPurchaseService.yearlyPlanId;
   bool _isRetryingStore = false;
+  bool _isProcessingPurchase = false;
   int _selectedTab = 0; // 0: VIP Benefits, 1: Free vs PRO
+  int _changePlanGuideTab = 0; // 0: In-App Steps, 1: Play Store Steps
   int? _expandedFaqIndex;
+
+  StreamSubscription<String>? _purchaseSuccessSub;
+  StreamSubscription<void>? _purchaseCanceledSub;
+  StreamSubscription<String>? _purchaseErrorSub;
+
+  Future<void> _openPlayStoreSubscriptions() async {
+    final Uri url = Uri.parse("https://play.google.com/store/account/subscriptions");
+    try {
+      if (!await launchUrl(url, mode: LaunchMode.externalApplication)) {
+        await launchUrl(url, mode: LaunchMode.platformDefault);
+      }
+    } catch (e) {
+      debugPrint("Error opening play store subscriptions: $e");
+    }
+  }
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     FirebaseAnalyticsService().logProPlanView();
     InAppPurchaseService().fetchProducts().then((_) {
       if (mounted) setState(() {});
     });
+
+    // 1. Success Listener: ONLY trigger celebration card after Google Play confirms payment!
+    _purchaseSuccessSub = InAppPurchaseService().onPurchaseCompleted.listen((purchasedPlanId) async {
+      if (!mounted) return;
+      setState(() => _isProcessingPurchase = false);
+      // Confirmed genuine payment
+      await ProThankYouDialog.show(context, planId: purchasedPlanId);
+      if (mounted) {
+        Navigator.pop(context); // Close PRO screen after celebration
+      }
+    });
+
+    // 2. Cancellation Listener: If user cancels in Google Play or returns without paying
+    _purchaseCanceledSub = InAppPurchaseService().onPurchaseCanceled.listen((_) {
+      if (!mounted) return;
+      setState(() => _isProcessingPurchase = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Row(
+            children: [
+              Icon(Icons.info_outline, color: Colors.white, size: 18),
+              SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  "Payment canceled. You were not charged.",
+                  style: TextStyle(color: Colors.white, fontSize: 13),
+                ),
+              ),
+            ],
+          ),
+          backgroundColor: const Color(0xff1E293B),
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          duration: const Duration(seconds: 3),
+        ),
+      );
+    });
+
+    // 3. Error Listener: If Google Play payment fails or card is declined
+    _purchaseErrorSub = InAppPurchaseService().onPurchaseError.listen((errorMsg) {
+      if (!mounted) return;
+      setState(() => _isProcessingPurchase = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Row(
+            children: [
+              const Icon(Icons.error_outline, color: Colors.white, size: 18),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  "Payment could not be completed: $errorMsg",
+                  style: const TextStyle(color: Colors.white, fontSize: 13),
+                ),
+              ),
+            ],
+          ),
+          backgroundColor: const Color(0xffEF4444),
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          duration: const Duration(seconds: 4),
+        ),
+      );
+    });
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      // If user returned from Google Play sheet without paying, reset processing state
+      Future.delayed(const Duration(milliseconds: 600), () {
+        if (mounted && _isProcessingPurchase) {
+          setState(() => _isProcessingPurchase = false);
+        }
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _purchaseSuccessSub?.cancel();
+    _purchaseCanceledSub?.cancel();
+    _purchaseErrorSub?.cancel();
+    super.dispose();
   }
 
   String _getPriceForPlan(String planId, bool isIndia) {
@@ -58,11 +163,26 @@ class _ProScreenState extends State<ProScreen> {
     }
   }
 
-  String _getCtaButtonText(bool isPro, String price) {
-    if (isPro) return "YOU ARE ALREADY A VIP MEMBER ✨";
+  String _getCtaButtonText(ProProvider pro, String price) {
+    if (pro.isPro) {
+      final active = pro.activePlanId;
+      if (active != null && (active == _selectedPlanId || (active.contains('monthly') && _selectedPlanId.contains('monthly')) || (active.contains('yearly') && _selectedPlanId.contains('yearly')))) {
+        return "CURRENT ACTIVE PLAN ✨";
+      } else {
+        if (_selectedPlanId == InAppPurchaseService.yearlyPlanId) {
+          return "UPGRADE TO ANNUAL VIP • $price 🚀";
+        } else if (_selectedPlanId == InAppPurchaseService.lifetimePlanId ||
+            _selectedPlanId == InAppPurchaseService.altLifetimePlanId) {
+          return "UPGRADE TO LIFETIME • $price 👑";
+        } else {
+          return "SWITCH TO MONTHLY • $price";
+        }
+      }
+    }
     if (_selectedPlanId == InAppPurchaseService.yearlyPlanId) {
       return "START ANNUAL VIP • $price 👑";
-    } else if (_selectedPlanId == InAppPurchaseService.lifetimePlanId) {
+    } else if (_selectedPlanId == InAppPurchaseService.lifetimePlanId ||
+        _selectedPlanId == InAppPurchaseService.altLifetimePlanId) {
       return "GET LIFETIME ACCESS • $price 👑";
     } else {
       return "START MONTHLY VIP • $price 👑";
@@ -75,6 +195,16 @@ class _ProScreenState extends State<ProScreen> {
     final currencyProvider = Provider.of<CurrencyProvider>(context);
     final isIndia = currencyProvider.code == 'INR' || currencyProvider.countryCode == 'IN';
     final selectedPrice = _getPriceForPlan(_selectedPlanId, isIndia);
+
+    final activePlan = proProvider.activePlanId;
+    final isMonthlyActive = proProvider.isPro && (activePlan == null || activePlan.contains('monthly'));
+    final isYearlyActive = proProvider.isPro && activePlan != null && activePlan.contains('yearly');
+    final isLifetimeActive = proProvider.isPro && activePlan != null && (activePlan.contains('lifetime') || activePlan == InAppPurchaseService.altLifetimePlanId);
+
+    final isCurrentSelectionActive = proProvider.isPro &&
+        ((isMonthlyActive && _selectedPlanId == InAppPurchaseService.monthlyPlanId) ||
+         (isYearlyActive && _selectedPlanId == InAppPurchaseService.yearlyPlanId) ||
+         (isLifetimeActive && (_selectedPlanId == InAppPurchaseService.lifetimePlanId || _selectedPlanId == InAppPurchaseService.altLifetimePlanId)));
 
     return Scaffold(
       backgroundColor: const Color(0xff0B1329),
@@ -377,6 +507,7 @@ class _ProScreenState extends State<ProScreen> {
                     subtitle: "Billed monthly • Perfect for trying out PRO",
                     tag: "FLEXIBLE",
                     tagColor: const Color(0xff94A3B8),
+                    isCurrentPlan: isMonthlyActive,
                   ),
                   const SizedBox(height: 12),
 
@@ -391,6 +522,8 @@ class _ProScreenState extends State<ProScreen> {
                         : "Only ~\$1.66 / month • Save 44%",
                     tag: isIndia ? "MOST POPULAR • SAVE 43%" : "MOST POPULAR • SAVE 44%",
                     tagColor: const Color(0xff10B981),
+                    isCurrentPlan: isYearlyActive,
+                    isUpgrade: isMonthlyActive,
                   ),
                   const SizedBox(height: 12),
 
@@ -403,6 +536,8 @@ class _ProScreenState extends State<ProScreen> {
                     subtitle: "Pay once, enjoy PRO forever • Zero recurring charges",
                     tag: "BEST VALUE • ONE-TIME",
                     tagColor: const Color(0xffF59E0B),
+                    isCurrentPlan: isLifetimeActive,
+                    isUpgrade: isMonthlyActive || isYearlyActive,
                   ),
 
                   const SizedBox(height: 24),
@@ -412,14 +547,20 @@ class _ProScreenState extends State<ProScreen> {
                     width: double.infinity,
                     height: 58,
                     child: ElevatedButton(
-                      onPressed: proProvider.isLoading
+                      onPressed: (proProvider.isLoading || _isProcessingPurchase || isCurrentSelectionActive)
                           ? null
                           : () async {
                               HapticFeedback.mediumImpact();
+                              setState(() => _isProcessingPurchase = true);
                               final result = await proProvider.purchasePlanWithResult(_selectedPlanId);
-                              if (!result.success && context.mounted) {
+                              if (!result.success) {
+                                if (!context.mounted) return;
+                                setState(() => _isProcessingPurchase = false);
                                 _showPlayStoreTroubleshootingDialog(context, result);
                               }
+                              // Note: When result.success is true, Google Play billing sheet is displayed.
+                              // ProThankYouDialog is NOT shown here! It is only triggered via
+                              // onPurchaseCompleted stream after Google Play confirms payment.
                             },
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.transparent,
@@ -432,22 +573,24 @@ class _ProScreenState extends State<ProScreen> {
                       ),
                       child: Ink(
                         decoration: BoxDecoration(
-                          gradient: const LinearGradient(
-                            colors: [Color(0xffF59E0B), Color(0xffD97706)],
+                          gradient: LinearGradient(
+                            colors: isCurrentSelectionActive
+                                ? [const Color(0xff334155), const Color(0xff1E293B)]
+                                : [const Color(0xffF59E0B), const Color(0xffD97706)],
                             begin: Alignment.centerLeft,
                             end: Alignment.centerRight,
                           ),
                           borderRadius: BorderRadius.circular(16),
                         ),
                         child: Center(
-                          child: proProvider.isLoading
+                          child: (proProvider.isLoading || _isProcessingPurchase)
                               ? const SizedBox(
                                   width: 24,
                                   height: 24,
                                   child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2.5),
                                 )
                               : Text(
-                                  _getCtaButtonText(proProvider.isPro, selectedPrice),
+                                  _getCtaButtonText(proProvider, selectedPrice),
                                   style: const TextStyle(
                                     fontSize: 15,
                                     fontWeight: FontWeight.w800,
@@ -459,6 +602,36 @@ class _ProScreenState extends State<ProScreen> {
                       ),
                     ),
                   ),
+
+                  if (proProvider.isPro) ...[
+                    const SizedBox(height: 14),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.05),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: const Color(0xff38BDF8).withValues(alpha: 0.25),
+                        ),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.swap_horizontal_circle_rounded, color: Color(0xff38BDF8), size: 18),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Text(
+                              "Google Play automatically applies prorated credit for remaining days when upgrading subscriptions.",
+                              style: TextStyle(
+                                fontSize: 11.5,
+                                color: Colors.white.withValues(alpha: 0.75),
+                                height: 1.3,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
 
                   const SizedBox(height: 18),
 
@@ -482,7 +655,12 @@ class _ProScreenState extends State<ProScreen> {
                     ),
                   ),
 
-                  const SizedBox(height: 24),
+                  const SizedBox(height: 22),
+
+                  // How to Switch / Manage Plan Interactive Guide Card
+                  _buildHowToChangePlanSection(),
+
+                  const SizedBox(height: 22),
 
                   // Interactive FAQ Accordion
                   _buildFaqSection(),
@@ -763,6 +941,8 @@ class _ProScreenState extends State<ProScreen> {
     required String subtitle,
     String? tag,
     Color? tagColor,
+    bool isCurrentPlan = false,
+    bool isUpgrade = false,
   }) {
     final bool isSelected = _selectedPlanId == planId;
 
@@ -837,7 +1017,63 @@ class _ProScreenState extends State<ProScreen> {
                   ],
                 ),
 
-                if (tag != null)
+                if (isCurrentPlan)
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: const Color(0xff10B981).withValues(alpha: 0.2),
+                      borderRadius: BorderRadius.circular(6),
+                      border: Border.all(
+                        color: const Color(0xff10B981),
+                        width: 0.8,
+                      ),
+                    ),
+                    child: const Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.check_circle_rounded, size: 11, color: Color(0xff10B981)),
+                        SizedBox(width: 4),
+                        Text(
+                          "CURRENT PLAN",
+                          style: TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w800,
+                            color: Color(0xff10B981),
+                            letterSpacing: 0.4,
+                          ),
+                        ),
+                      ],
+                    ),
+                  )
+                else if (isUpgrade)
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: const Color(0xffF59E0B).withValues(alpha: 0.2),
+                      borderRadius: BorderRadius.circular(6),
+                      border: Border.all(
+                        color: const Color(0xffF59E0B),
+                        width: 0.8,
+                      ),
+                    ),
+                    child: const Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.rocket_launch_rounded, size: 11, color: Color(0xffF59E0B)),
+                        SizedBox(width: 4),
+                        Text(
+                          "UPGRADE",
+                          style: TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w800,
+                            color: Color(0xffF59E0B),
+                            letterSpacing: 0.4,
+                          ),
+                        ),
+                      ],
+                    ),
+                  )
+                else if (tag != null)
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                     decoration: BoxDecoration(
@@ -897,6 +1133,279 @@ class _ProScreenState extends State<ProScreen> {
           ],
         ),
       ),
+    );
+  }
+
+  // Interactive Guide: How to Switch, Upgrade or Manage Plans
+  Widget _buildHowToChangePlanSection() {
+    return Container(
+      decoration: BoxDecoration(
+        color: const Color(0xff141E33),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: const Color(0xff38BDF8).withValues(alpha: 0.3),
+          width: 1.2,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xff0284C7).withValues(alpha: 0.12),
+            blurRadius: 18,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Header
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: const Color(0xff38BDF8).withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Icon(
+                    Icons.swap_horizontal_circle_rounded,
+                    color: Color(0xff38BDF8),
+                    size: 22,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                const Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        "HOW TO CHANGE OR MANAGE PLAN",
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w800,
+                          color: Colors.white,
+                          letterSpacing: 0.4,
+                        ),
+                      ),
+                      SizedBox(height: 2),
+                      Text(
+                        "Upgrade, switch, or manage subscriptions anytime",
+                        style: TextStyle(
+                          fontSize: 11.5,
+                          fontWeight: FontWeight.w600,
+                          color: Color(0xff38BDF8),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          // Tabs
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 14),
+            child: Container(
+              padding: const EdgeInsets.all(4),
+              decoration: BoxDecoration(
+                color: Colors.black.withValues(alpha: 0.35),
+                borderRadius: BorderRadius.circular(14),
+              ),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: GestureDetector(
+                      onTap: () {
+                        HapticFeedback.selectionClick();
+                        setState(() => _changePlanGuideTab = 0);
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(vertical: 8),
+                        decoration: BoxDecoration(
+                          color: _changePlanGuideTab == 0
+                              ? const Color(0xff2563EB)
+                              : Colors.transparent,
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Text(
+                          "⚡ In-App Upgrade",
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                            color: _changePlanGuideTab == 0 ? Colors.white : Colors.white60,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                  Expanded(
+                    child: GestureDetector(
+                      onTap: () {
+                        HapticFeedback.selectionClick();
+                        setState(() => _changePlanGuideTab = 1);
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(vertical: 8),
+                        decoration: BoxDecoration(
+                          color: _changePlanGuideTab == 1
+                              ? const Color(0xff2563EB)
+                              : Colors.transparent,
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Text(
+                          "🏪 Google Play Store",
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                            color: _changePlanGuideTab == 1 ? Colors.white : Colors.white60,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+
+          const SizedBox(height: 14),
+
+          // Content
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+            child: _changePlanGuideTab == 0
+                ? Column(
+                    children: [
+                      _buildGuideStepItem(
+                        number: "1",
+                        title: "Select Any Desired Plan Above",
+                        detail: "Whether on Free or currently on a Monthly plan, simply tap Annual VIP (₹399) or Lifetime VIP (₹899).",
+                      ),
+                      const SizedBox(height: 12),
+                      _buildGuideStepItem(
+                        number: "2",
+                        title: "Tap the Dynamic UPGRADE Button",
+                        detail: "The main button below automatically transforms into 'UPGRADE TO ANNUAL VIP 🚀' with your selected plan.",
+                      ),
+                      const SizedBox(height: 12),
+                      _buildGuideStepItem(
+                        number: "3",
+                        title: "Instant Prorated Credit Adjustment",
+                        detail: "Google Play adjusts remaining days from your existing subscription, so you only pay the fair price difference!",
+                      ),
+                    ],
+                  )
+                : Column(
+                    children: [
+                      _buildGuideStepItem(
+                        number: "1",
+                        title: "Open Google Play Store App",
+                        detail: "Open Google Play Store on your Android device and tap your Profile Photo in the top-right corner.",
+                      ),
+                      const SizedBox(height: 12),
+                      _buildGuideStepItem(
+                        number: "2",
+                        title: "Go to Subscriptions",
+                        detail: "Tap 'Payments & subscriptions' and then select 'Subscriptions' to view your active memberships.",
+                      ),
+                      const SizedBox(height: 12),
+                      _buildGuideStepItem(
+                        number: "3",
+                        title: "Manage Expense Tracker",
+                        detail: "Tap 'Expense Tracker' where you can change plans, update payment method, or cancel anytime with zero charges.",
+                      ),
+                      const SizedBox(height: 14),
+                      SizedBox(
+                        width: double.infinity,
+                        height: 44,
+                        child: OutlinedButton.icon(
+                          onPressed: _openPlayStoreSubscriptions,
+                          icon: const Icon(Icons.open_in_new_rounded, size: 16, color: Color(0xff38BDF8)),
+                          label: const Text(
+                            "Open Google Play Subscriptions ↗",
+                            style: TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w700,
+                              color: Color(0xff38BDF8),
+                            ),
+                          ),
+                          style: OutlinedButton.styleFrom(
+                            side: const BorderSide(color: Color(0xff38BDF8), width: 1.2),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildGuideStepItem({
+    required String number,
+    required String title,
+    required String detail,
+  }) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          width: 26,
+          height: 26,
+          margin: const EdgeInsets.only(top: 2),
+          decoration: BoxDecoration(
+            color: const Color(0xff38BDF8).withValues(alpha: 0.18),
+            shape: BoxShape.circle,
+            border: Border.all(
+              color: const Color(0xff38BDF8),
+              width: 1,
+            ),
+          ),
+          child: Center(
+            child: Text(
+              number,
+              style: const TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w800,
+                color: Color(0xff38BDF8),
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                title,
+                style: const TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                  color: Colors.white,
+                ),
+              ),
+              const SizedBox(height: 3),
+              Text(
+                detail,
+                style: TextStyle(
+                  fontSize: 11.5,
+                  color: Colors.white.withValues(alpha: 0.65),
+                  height: 1.35,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 

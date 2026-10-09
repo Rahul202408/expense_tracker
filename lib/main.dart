@@ -20,11 +20,35 @@ import 'widgets/no_internet_banner.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // 1. Initialize local session cache safely
+  // 1. Initialize Firebase FIRST before anything else
   try {
-    await AuthService.initCachedSession();
+    if (Firebase.apps.isEmpty) {
+      await Firebase.initializeApp(
+        options: DefaultFirebaseOptions.currentPlatform,
+      );
+    }
+  } on FirebaseException catch (e) {
+    if (e.code == 'duplicate-app') {
+      debugPrint("Firebase default app already initialized");
+    } else {
+      debugPrint("Firebase init FirebaseException: $e");
+      try {
+        if (Firebase.apps.isEmpty) {
+          await Firebase.initializeApp();
+        }
+      } catch (e2) {
+        debugPrint("Firebase fallback init note: $e2");
+      }
+    }
   } catch (e) {
-    debugPrint("AuthService initCachedSession note: $e");
+    debugPrint("Firebase init generic note: $e");
+    try {
+      if (Firebase.apps.isEmpty) {
+        await Firebase.initializeApp();
+      }
+    } catch (e2) {
+      debugPrint("Firebase fallback init note: $e2");
+    }
   }
 
   // 2. Load .env environment variables safely
@@ -34,18 +58,11 @@ Future<void> main() async {
     debugPrint("dotenv load note: $e");
   }
 
-  // 3. Initialize Firebase safely with robust fallback to native credentials
+  // 3. Initialize local session cache safely
   try {
-    await Firebase.initializeApp(
-      options: DefaultFirebaseOptions.currentPlatform,
-    );
+    await AuthService.initCachedSession();
   } catch (e) {
-    debugPrint("Firebase init with options note: $e");
-    try {
-      await Firebase.initializeApp();
-    } catch (e2) {
-      debugPrint("Firebase default init note: $e2");
-    }
+    debugPrint("AuthService initCachedSession note: $e");
   }
 
   // 4. Safely log app open
@@ -73,6 +90,41 @@ Future<void> main() async {
   } catch (e) {
     debugPrint("NotificationService launch note: $e");
   }
+
+  FlutterError.onError = (details) {
+    FlutterError.presentError(details);
+    debugPrint("FlutterError caught: ${details.exceptionAsString()}");
+  };
+
+  ErrorWidget.builder = (FlutterErrorDetails details) {
+    return Material(
+      color: const Color(0xff0F172A),
+      child: Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24.0),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.info_outline_rounded, color: Color(0xff10B981), size: 48),
+              const SizedBox(height: 12),
+              const Text(
+                "Expense Tracker",
+                style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                details.exceptionAsString(),
+                textAlign: TextAlign.center,
+                maxLines: 4,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(color: Colors.white70, fontSize: 11),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  };
 
   // 6. Guarantee runApp always executes to display Flutter UI
   runApp(

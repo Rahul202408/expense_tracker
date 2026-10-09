@@ -37,22 +37,66 @@ class HomeHeader extends StatelessWidget {
       stream: FirebaseFirestore.instance.collection('users').doc(currentUid).snapshots(),
       builder: (context, snapshot) {
         final userData = snapshot.data?.data();
-        String name = "User";
 
-        // Prioritize full name from Firestore database
+        // Robust multi-tier name resolution cascade: Firestore -> FirebaseAuth -> Local Cache -> Email -> Fallback
+        String resolvedName = "";
         if (userData != null &&
             userData['fullName'] != null &&
             userData['fullName'].toString().trim().isNotEmpty) {
-          name = userData['fullName'].toString().trim();
+          resolvedName = userData['fullName'].toString().trim();
+        } else if (userData != null &&
+            userData['displayName'] != null &&
+            userData['displayName'].toString().trim().isNotEmpty) {
+          resolvedName = userData['displayName'].toString().trim();
+        } else if (userData != null &&
+            userData['name'] != null &&
+            userData['name'].toString().trim().isNotEmpty) {
+          resolvedName = userData['name'].toString().trim();
         } else if (user?.displayName != null && user!.displayName!.trim().isNotEmpty) {
-          name = user.displayName!.trim();
+          resolvedName = user.displayName!.trim();
+        } else if (FirebaseAuth.instance.currentUser?.displayName != null &&
+            FirebaseAuth.instance.currentUser!.displayName!.trim().isNotEmpty) {
+          resolvedName = FirebaseAuth.instance.currentUser!.displayName!.trim();
+        } else if (AuthService.cachedName != null &&
+            AuthService.cachedName!.trim().isNotEmpty) {
+          resolvedName = AuthService.cachedName!.trim();
+        } else if (user?.email != null && user!.email!.isNotEmpty) {
+          resolvedName = user.email!.split('@')[0];
+        } else if (FirebaseAuth.instance.currentUser?.email != null &&
+            FirebaseAuth.instance.currentUser!.email!.isNotEmpty) {
+          resolvedName = FirebaseAuth.instance.currentUser!.email!.split('@')[0];
+        } else if (userData != null &&
+            userData['email'] != null &&
+            userData['email'].toString().isNotEmpty) {
+          resolvedName = userData['email'].toString().split('@')[0];
+        } else if (AuthService.cachedEmail != null &&
+            AuthService.cachedEmail!.isNotEmpty) {
+          resolvedName = AuthService.cachedEmail!.split('@')[0];
         }
 
-        final photoUrl = (userData != null &&
-                userData['photoUrl'] != null &&
-                userData['photoUrl'].toString().isNotEmpty)
-            ? userData['photoUrl'].toString()
-            : (user?.photoURL ?? '');
+        final name = resolvedName.isNotEmpty ? resolvedName : "User";
+
+        // Keep local in-memory cache synchronized with the latest resolved name
+        if (resolvedName.isNotEmpty &&
+            (AuthService.cachedName == null || AuthService.cachedName!.isEmpty)) {
+          AuthService.cachedName = resolvedName;
+        }
+
+        // Robust multi-tier avatar photo resolution cascade
+        String photoUrl = "";
+        if (userData != null &&
+            userData['photoUrl'] != null &&
+            userData['photoUrl'].toString().trim().isNotEmpty) {
+          photoUrl = userData['photoUrl'].toString().trim();
+        } else if (user?.photoURL != null && user!.photoURL!.trim().isNotEmpty) {
+          photoUrl = user.photoURL!.trim();
+        } else if (FirebaseAuth.instance.currentUser?.photoURL != null &&
+            FirebaseAuth.instance.currentUser!.photoURL!.trim().isNotEmpty) {
+          photoUrl = FirebaseAuth.instance.currentUser!.photoURL!.trim();
+        } else if (AuthService.cachedPhotoUrl != null &&
+            AuthService.cachedPhotoUrl!.trim().isNotEmpty) {
+          photoUrl = AuthService.cachedPhotoUrl!.trim();
+        }
 
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -86,25 +130,40 @@ class HomeHeader extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 10,
-                          vertical: 4,
-                        ),
-                        decoration: BoxDecoration(
-                          color: isDark
-                              ? const Color(0xff38EF7D).withValues(alpha: 0.15)
-                              : const Color(0xff1E3C72).withValues(alpha: 0.1),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Text(
-                          _getGreeting(),
-                          style: TextStyle(
-                            color: isDark ? const Color(0xff38EF7D) : const Color(0xff1E3C72),
-                            fontSize: 13,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
+                      Consumer<ProProvider>(
+                        builder: (context, pro, _) {
+                          final isPro = pro.isPro;
+                          return Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 10,
+                              vertical: 4,
+                            ),
+                            decoration: BoxDecoration(
+                              color: isPro
+                                  ? const Color(0xffF59E0B).withValues(alpha: 0.15)
+                                  : (isDark
+                                      ? const Color(0xff38EF7D).withValues(alpha: 0.15)
+                                      : const Color(0xff1E3C72).withValues(alpha: 0.1)),
+                              borderRadius: BorderRadius.circular(12),
+                              border: isPro
+                                  ? Border.all(
+                                      color: const Color(0xffF59E0B).withValues(alpha: 0.4),
+                                      width: 1,
+                                    )
+                                  : null,
+                            ),
+                            child: Text(
+                              isPro ? "${_getGreeting()} • VIP ✨" : _getGreeting(),
+                              style: TextStyle(
+                                color: isPro
+                                    ? const Color(0xffF59E0B)
+                                    : (isDark ? const Color(0xff38EF7D) : const Color(0xff1E3C72)),
+                                fontSize: 13,
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
+                          );
+                        },
                       ),
 
                       const SizedBox(height: 6),
@@ -128,16 +187,18 @@ class HomeHeader extends StatelessWidget {
                             builder: (context, pro, _) {
                               if (pro.isPro) {
                                 return Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                  padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
                                   decoration: BoxDecoration(
                                     gradient: const LinearGradient(
-                                      colors: [Color(0xffF59E0B), Color(0xffD97706)],
+                                      colors: [Color(0xffF59E0B), Color(0xffFFD700), Color(0xffD97706)],
+                                      begin: Alignment.topLeft,
+                                      end: Alignment.bottomRight,
                                     ),
-                                    borderRadius: BorderRadius.circular(10),
+                                    borderRadius: BorderRadius.circular(12),
                                     boxShadow: [
                                       BoxShadow(
-                                        color: const Color(0xffF59E0B).withValues(alpha: 0.3),
-                                        blurRadius: 6,
+                                        color: const Color(0xffF59E0B).withValues(alpha: 0.45),
+                                        blurRadius: 10,
                                         offset: const Offset(0, 2),
                                       ),
                                     ],
@@ -145,15 +206,15 @@ class HomeHeader extends StatelessWidget {
                                   child: const Row(
                                     mainAxisSize: MainAxisSize.min,
                                     children: [
-                                      Icon(Icons.workspace_premium_rounded, size: 14, color: Colors.white),
-                                      SizedBox(width: 3),
+                                      Text("👑", style: TextStyle(fontSize: 12)),
+                                      SizedBox(width: 4),
                                       Text(
-                                        "PRO",
+                                        "VIP PRO",
                                         style: TextStyle(
-                                          color: Colors.white,
+                                          color: Colors.black,
                                           fontSize: 11,
                                           fontWeight: FontWeight.w900,
-                                          letterSpacing: 0.5,
+                                          letterSpacing: 0.6,
                                         ),
                                       ),
                                     ],
@@ -199,57 +260,93 @@ class HomeHeader extends StatelessWidget {
                   ),
                 ),
 
-                // Glowing User Avatar (Clickable to open Profile)
-                GestureDetector(
-                  onTap: onProfileTap,
-                  behavior: HitTestBehavior.opaque,
-                  child: Stack(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(3),
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          gradient: const LinearGradient(
-                            colors: [Color(0xff11998E), Color(0xff38EF7D)],
-                          ),
-                          boxShadow: [
-                            BoxShadow(
-                              color: const Color(0xff11998E).withValues(alpha: 0.3),
-                              blurRadius: 10,
-                              spreadRadius: 1,
+                // Glowing User Avatar (Clickable to open Profile with Pro Aura)
+                Consumer<ProProvider>(
+                  builder: (context, pro, _) {
+                    final isPro = pro.isPro;
+                    return GestureDetector(
+                      onTap: onProfileTap,
+                      behavior: HitTestBehavior.opaque,
+                      child: Stack(
+                        clipBehavior: Clip.none,
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(3),
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              gradient: LinearGradient(
+                                colors: isPro
+                                    ? const [Color(0xffF59E0B), Color(0xffFFD700), Color(0xffD97706)]
+                                    : const [Color(0xff11998E), Color(0xff38EF7D)],
+                              ),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: (isPro ? const Color(0xffFFD700) : const Color(0xff11998E))
+                                      .withValues(alpha: isPro ? 0.45 : 0.3),
+                                  blurRadius: isPro ? 14 : 10,
+                                  spreadRadius: isPro ? 2 : 1,
+                                ),
+                              ],
                             ),
-                          ],
-                        ),
-                        child: CircleAvatar(
-                          radius: 26,
-                          backgroundColor: Colors.white,
-                          backgroundImage: photoUrl.isNotEmpty
-                              ? NetworkImage(photoUrl)
-                              : null,
-                          child: photoUrl.isEmpty
-                              ? const Icon(
-                                  Icons.person_rounded,
-                                  size: 28,
-                                  color: Color(0xff1E3C72),
-                                )
-                              : null,
-                        ),
-                      ),
-                      Positioned(
-                        right: 2,
-                        bottom: 2,
-                        child: Container(
-                          width: 13,
-                          height: 13,
-                          decoration: BoxDecoration(
-                            color: const Color(0xff00E676),
-                            shape: BoxShape.circle,
-                            border: Border.all(color: Colors.white, width: 2),
+                            child: CircleAvatar(
+                              radius: 26,
+                              backgroundColor: Colors.white,
+                              backgroundImage: photoUrl.isNotEmpty
+                                  ? NetworkImage(photoUrl)
+                                  : null,
+                              child: photoUrl.isEmpty
+                                  ? const Icon(
+                                      Icons.person_rounded,
+                                      size: 28,
+                                      color: Color(0xff1E3C72),
+                                    )
+                                  : null,
+                            ),
                           ),
-                        ),
+                          if (isPro)
+                            Positioned(
+                              top: -6,
+                              right: -4,
+                              child: Container(
+                                padding: const EdgeInsets.all(3),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xff0B1329),
+                                  shape: BoxShape.circle,
+                                  border: Border.all(
+                                    color: const Color(0xffFFD700),
+                                    width: 1.5,
+                                  ),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: const Color(0xffFFD700).withValues(alpha: 0.5),
+                                      blurRadius: 8,
+                                    ),
+                                  ],
+                                ),
+                                child: const Text(
+                                  "👑",
+                                  style: TextStyle(fontSize: 11),
+                                ),
+                              ),
+                            )
+                          else
+                            Positioned(
+                              right: 2,
+                              bottom: 2,
+                              child: Container(
+                                width: 13,
+                                height: 13,
+                                decoration: BoxDecoration(
+                                  color: const Color(0xff00E676),
+                                  shape: BoxShape.circle,
+                                  border: Border.all(color: Colors.white, width: 2),
+                                ),
+                              ),
+                            ),
+                        ],
                       ),
-                    ],
-                  ),
+                    );
+                  },
                 ),
               ],
             ),

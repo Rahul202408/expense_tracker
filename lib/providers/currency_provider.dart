@@ -34,8 +34,37 @@ class CurrencyProvider extends ChangeNotifier {
         _currentCurrency = CurrencyService.defaultCurrency;
       }
       notifyListeners();
+
+      // Proactively check Firestore in case user signed in on a new device or reinstalled
+      await syncFromFirestore();
     } catch (e) {
       debugPrint("Error loading user currency: $e");
+    }
+  }
+
+  /// Sync currency configuration from user's remote cloud profile
+  Future<void> syncFromFirestore() async {
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null) return;
+      final doc = await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
+      if (doc.exists && doc.data() != null) {
+        final savedCode = doc.data()!['currencyCode'] as String?;
+        if (savedCode != null && savedCode.isNotEmpty) {
+          final match = CurrencyService.supportedCurrencies.firstWhere(
+            (c) => c.code == savedCode,
+            orElse: () => CurrencyService.defaultCurrency,
+          );
+          if (match.code != _currentCurrency.code) {
+            _currentCurrency = match;
+            notifyListeners();
+            final prefs = await SharedPreferences.getInstance();
+            await prefs.setString(_prefCurrencyCodeKey, match.code);
+          }
+        }
+      }
+    } catch (e) {
+      debugPrint("Error syncing currency from Firestore: $e");
     }
   }
 
