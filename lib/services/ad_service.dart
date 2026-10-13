@@ -8,13 +8,18 @@ class AdService {
   factory AdService() => _instance;
   AdService._internal();
 
-  /// Check if test ads should be used (defaults to true if not specified in .env)
+  /// Check if test ads should be used.
+  /// Always returns true in debug mode to prevent policy violations and No-Fill errors during testing.
+  /// In release mode, respects the ADMOB_USE_TEST_ADS setting from .env.
   static bool get useTestAds {
+    if (kDebugMode) {
+      return true;
+    }
     final flag = dotenv.env['ADMOB_USE_TEST_ADS'];
     if (flag != null) {
       return flag.toLowerCase() == 'true';
     }
-    return kDebugMode;
+    return false;
   }
 
   /// Official Google Test Banner Ad Unit IDs

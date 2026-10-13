@@ -24,16 +24,16 @@ class CurrencyInfo {
 
 class CurrencyService {
   static const CurrencyInfo defaultCurrency = CurrencyInfo(
-    code: 'INR',
-    symbol: '₹',
-    name: 'Indian Rupee',
-    country: 'India',
-    countryCode: 'IN',
+    code: 'USD',
+    symbol: '\$',
+    name: 'US Dollar',
+    country: 'United States',
+    countryCode: 'US',
   );
 
   static const List<CurrencyInfo> supportedCurrencies = [
-    CurrencyInfo(code: 'INR', symbol: '₹', name: 'Indian Rupee', country: 'India', countryCode: 'IN'),
     CurrencyInfo(code: 'USD', symbol: '\$', name: 'US Dollar', country: 'United States', countryCode: 'US'),
+    CurrencyInfo(code: 'INR', symbol: '₹', name: 'Indian Rupee', country: 'India', countryCode: 'IN'),
     CurrencyInfo(code: 'EUR', symbol: '€', name: 'Euro', country: 'European Union', countryCode: 'EU'),
     CurrencyInfo(code: 'GBP', symbol: '£', name: 'British Pound', country: 'United Kingdom', countryCode: 'GB'),
     CurrencyInfo(code: 'AED', symbol: 'AED', name: 'UAE Dirham', country: 'United Arab Emirates', countryCode: 'AE'),

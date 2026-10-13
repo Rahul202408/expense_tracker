@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'package:provider/provider.dart';
@@ -31,14 +32,16 @@ class _NativeAdWidgetState extends State<NativeAdWidget> {
       final isPro = Provider.of<ProProvider>(context, listen: false).isPro;
       if (isPro) return;
 
-      // First-time users (Launch 1): Keep experience completely ad-free
-      try {
-        final prefs = await SharedPreferences.getInstance();
-        final launchCount = prefs.getInt(AppPromptService.keyLaunchCount) ?? 0;
-        if (launchCount <= 1) {
-          return;
-        }
-      } catch (_) {}
+      // First-time users (Launch 1): Keep experience completely ad-free in production
+      if (!kDebugMode) {
+        try {
+          final prefs = await SharedPreferences.getInstance();
+          final launchCount = prefs.getInt(AppPromptService.keyLaunchCount) ?? 0;
+          if (launchCount <= 1) {
+            return;
+          }
+        } catch (_) {}
+      }
 
       if (mounted) {
         _loadNativeAd();
@@ -83,6 +86,7 @@ class _NativeAdWidgetState extends State<NativeAdWidget> {
       ),
       listener: NativeAdListener(
         onAdLoaded: (ad) {
+          debugPrint("NativeAd loaded successfully.");
           if (mounted) {
             setState(() {
               _isAdLoaded = true;
@@ -90,6 +94,7 @@ class _NativeAdWidgetState extends State<NativeAdWidget> {
           }
         },
         onAdFailedToLoad: (ad, error) {
+          debugPrint("NativeAd failed to load: ${error.message} [Code: ${error.code}]");
           ad.dispose();
           if (mounted) {
             setState(() {

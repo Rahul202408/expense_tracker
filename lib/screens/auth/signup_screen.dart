@@ -17,6 +17,7 @@ import '../../widgets/currency_picker_bottom_sheet.dart';
 import '../../services/app_open_ad_manager.dart';
 import '../profile/terms_conditions_screen.dart';
 import '../main_screen.dart';
+import 'initial_currency_screen.dart';
 
 class SignupScreen extends StatefulWidget {
   const SignupScreen({super.key});
@@ -59,7 +60,7 @@ class _SignupScreenState extends State<SignupScreen> {
         Provider.of<CurrencyProvider>(context, listen: false).syncFromFirestore();
         Navigator.pushAndRemoveUntil(
           context,
-          MaterialPageRoute(builder: (_) => const MainScreen()),
+          MaterialPageRoute(builder: (_) => const InitialCurrencyScreen()),
           (route) => false,
         );
       } else if (result != "Google Sign-In Cancelled") {

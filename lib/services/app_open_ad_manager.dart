@@ -28,12 +28,12 @@ class AppOpenAdManager with WidgetsBindingObserver {
   bool _isAdSuppressed = false;
 
   /// Minimum duration the app must stay in the background before showing an App Open Ad on resume.
-  /// (30 seconds) - This completely prevents ads from appearing when a user simply pulls down
+  /// (15 seconds) - Prevents ads from appearing when a user simply pulls down
   /// the phone's notification shutter (sater) or opens a brief system dialog (Google Sign-In, permissions).
-  static const Duration minBackgroundDuration = Duration(seconds: 30);
+  static const Duration minBackgroundDuration = Duration(seconds: 15);
 
-  /// Cooldown between App Open Ads (4 minutes) to avoid overwhelming returning users.
-  static const Duration minAdInterval = Duration(minutes: 4);
+  /// Cooldown between App Open Ads (3 minutes) to avoid overwhelming returning users.
+  static const Duration minAdInterval = Duration(minutes: 3);
 
   /// Maximum duration allowed for an App Open Ad before it's considered expired (4 hours)
   static const Duration maxCacheDuration = Duration(hours: 4);
@@ -68,19 +68,21 @@ class AppOpenAdManager with WidgetsBindingObserver {
     _isProUser = await InAppPurchaseService().getIsPro();
     if (_isProUser || isAdAvailable) return;
 
-    // Check if user is a first-time user (Launch 1)
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      final launchCount = prefs.getInt(AppPromptService.keyLaunchCount) ?? 0;
-      if (launchCount <= 1) {
-        if (kDebugMode) {
-          print(
-            'AppOpenAdManager: Skipping ad load for first-time user (launch count: $launchCount).',
-          );
+    // Check if user is a first-time user (Launch 1) in release mode
+    if (!kDebugMode) {
+      try {
+        final prefs = await SharedPreferences.getInstance();
+        final launchCount = prefs.getInt(AppPromptService.keyLaunchCount) ?? 0;
+        if (launchCount <= 1) {
+          if (kDebugMode) {
+            print(
+              'AppOpenAdManager: Skipping ad load for first-time user (launch count: $launchCount).',
+            );
+          }
+          return;
         }
-        return;
-      }
-    } catch (_) {}
+      } catch (_) {}
+    }
 
     AppOpenAd.load(
       adUnitId: AdService.appOpenAdUnitId,
@@ -95,7 +97,7 @@ class AppOpenAdManager with WidgetsBindingObserver {
         },
         onAdFailedToLoad: (error) {
           if (kDebugMode) {
-            print('AppOpenAd failed to load: $error');
+            print('AppOpenAd failed to load: ${error.message} [Code: ${error.code}]');
           }
           _appOpenAd = null;
         },
@@ -135,19 +137,21 @@ class AppOpenAdManager with WidgetsBindingObserver {
       return true;
     }
 
-    // 4. First-time user rule: No ads on Launch 1 or before first session is complete
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      final launchCount = prefs.getInt(AppPromptService.keyLaunchCount) ?? 0;
-      if (launchCount <= 1) {
-        if (kDebugMode) {
-          print(
-            'AppOpenAdManager: First-time user (launch $launchCount), suppressing App Open Ad.',
-          );
+    // 4. First-time user rule: No ads on Launch 1 or before first session is complete in production
+    if (!kDebugMode) {
+      try {
+        final prefs = await SharedPreferences.getInstance();
+        final launchCount = prefs.getInt(AppPromptService.keyLaunchCount) ?? 0;
+        if (launchCount <= 1) {
+          if (kDebugMode) {
+            print(
+              'AppOpenAdManager: First-time user (launch $launchCount), suppressing App Open Ad.',
+            );
+          }
+          return true;
         }
-        return true;
-      }
-    } catch (_) {}
+      } catch (_) {}
+    }
 
     // 5. Cooldown interval check
     if (_lastAdDismissedTime != null) {
@@ -165,16 +169,20 @@ class AppOpenAdManager with WidgetsBindingObserver {
     return false;
   }
 
-  /// Show ad if available
-  void showAdIfAvailable() async {
+  /// Show ad if available (supports optional onComplete callback for cold start flow)
+  void showAdIfAvailable({VoidCallback? onComplete}) async {
     final shouldSuppress = await _shouldSuppressAd();
-    if (shouldSuppress) return;
+    if (shouldSuppress) {
+      onComplete?.call();
+      return;
+    }
 
     if (!isAdAvailable) {
       if (kDebugMode) {
-        print('AppOpenAd is not available yet. Loading new ad.');
+        print('AppOpenAd is not available yet. Loading new ad in background.');
       }
       loadAd();
+      onComplete?.call();
       return;
     }
 
@@ -182,6 +190,7 @@ class AppOpenAdManager with WidgetsBindingObserver {
       if (kDebugMode) {
         print('AppOpenAd is already showing.');
       }
+      onComplete?.call();
       return;
     }
 
@@ -195,13 +204,18 @@ class AppOpenAdManager with WidgetsBindingObserver {
         ad.dispose();
         _appOpenAd = null;
         loadAd();
+        onComplete?.call();
       },
       onAdFailedToShowFullScreenContent: (ad, error) {
+        if (kDebugMode) {
+          print('AppOpenAd failed to show: ${error.message} [Code: ${error.code}]');
+        }
         _isShowingAd = false;
         _lastAdDismissedTime = DateTime.now();
         ad.dispose();
         _appOpenAd = null;
         loadAd();
+        onComplete?.call();
       },
     );
 

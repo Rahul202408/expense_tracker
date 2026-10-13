@@ -4,14 +4,17 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../providers/pro_provider.dart';
 import '../../providers/currency_provider.dart';
 import '../../services/in_app_purchase_service.dart';
 import '../../services/firebase_analytics_service.dart';
 import '../../widgets/pro_thank_you_dialog.dart';
+import '../auth/login_screen.dart';
 
 class ProScreen extends StatefulWidget {
-  const ProScreen({super.key});
+  final bool isFromOnboarding;
+  const ProScreen({super.key, this.isFromOnboarding = false});
 
   @override
   State<ProScreen> createState() => _ProScreenState();
@@ -29,6 +32,24 @@ class _ProScreenState extends State<ProScreen> with WidgetsBindingObserver {
   StreamSubscription<String>? _purchaseSuccessSub;
   StreamSubscription<void>? _purchaseCanceledSub;
   StreamSubscription<String>? _purchaseErrorSub;
+
+  Future<void> _handleCloseOrSkip() async {
+    HapticFeedback.lightImpact();
+    if (widget.isFromOnboarding) {
+      try {
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setBool("onboarding", true);
+      } catch (_) {}
+      if (mounted) {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => const LoginScreen()),
+        );
+      }
+    } else {
+      Navigator.pop(context);
+    }
+  }
 
   Future<void> _openPlayStoreSubscriptions() async {
     final Uri url = Uri.parse("https://play.google.com/store/account/subscriptions");
@@ -57,7 +78,19 @@ class _ProScreenState extends State<ProScreen> with WidgetsBindingObserver {
       // Confirmed genuine payment
       await ProThankYouDialog.show(context, planId: purchasedPlanId);
       if (mounted) {
-        Navigator.pop(context); // Close PRO screen after celebration
+        if (widget.isFromOnboarding) {
+          try {
+            final prefs = await SharedPreferences.getInstance();
+            await prefs.setBool("onboarding", true);
+          } catch (_) {}
+          if (!mounted) return;
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (_) => const LoginScreen()),
+          );
+        } else {
+          Navigator.pop(context); // Close PRO screen after celebration
+        }
       }
     });
 
@@ -253,43 +286,84 @@ class _ProScreenState extends State<ProScreen> with WidgetsBindingObserver {
                           shape: BoxShape.circle,
                         ),
                         child: IconButton(
-                          onPressed: () => Navigator.pop(context),
+                          onPressed: _handleCloseOrSkip,
                           icon: const Icon(Icons.close_rounded, color: Colors.white, size: 24),
-                          tooltip: "Close",
+                          tooltip: widget.isFromOnboarding ? "Skip" : "Close",
                         ),
                       ),
-                      TextButton.icon(
-                        onPressed: () async {
-                          HapticFeedback.lightImpact();
-                          await proProvider.restorePurchases();
-                          if (context.mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text(
-                                  proProvider.isPro
-                                      ? "Purchases successfully restored! 🎉"
-                                      : "No active VIP purchase found to restore.",
-                                  style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
+                      if (widget.isFromOnboarding)
+                        TextButton(
+                          onPressed: _handleCloseOrSkip,
+                          child: const Text(
+                            "Skip for now",
+                            style: TextStyle(
+                              color: Color(0xff94A3B8),
+                              fontWeight: FontWeight.w600,
+                              fontSize: 13,
+                            ),
+                          ),
+                        )
+                      else
+                        TextButton.icon(
+                          onPressed: () async {
+                            HapticFeedback.lightImpact();
+                            await proProvider.restorePurchases();
+                            if (context.mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text(
+                                    proProvider.isPro
+                                        ? "Purchases successfully restored! 🎉"
+                                        : "No active VIP purchase found to restore.",
+                                    style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
+                                  ),
+                                  backgroundColor: proProvider.isPro ? Colors.green : const Color(0xff1E293B),
                                 ),
-                                backgroundColor: proProvider.isPro ? Colors.green : const Color(0xff1E293B),
-                              ),
-                            );
-                          }
-                        },
-                        icon: const Icon(Icons.restore_rounded, size: 16, color: Color(0xff94A3B8)),
-                        label: const Text(
-                          "Restore",
-                          style: TextStyle(
-                            color: Color(0xff94A3B8),
-                            fontWeight: FontWeight.w600,
-                            fontSize: 13,
+                              );
+                            }
+                          },
+                          icon: const Icon(Icons.restore_rounded, size: 16, color: Color(0xff94A3B8)),
+                          label: const Text(
+                            "Restore",
+                            style: TextStyle(
+                              color: Color(0xff94A3B8),
+                              fontWeight: FontWeight.w600,
+                              fontSize: 13,
+                            ),
                           ),
                         ),
-                      ),
                     ],
                   ),
 
                   const SizedBox(height: 6),
+
+                  if (widget.isFromOnboarding) ...[
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                      margin: const EdgeInsets.only(bottom: 12),
+                      decoration: BoxDecoration(
+                        color: const Color(0xffF59E0B).withValues(alpha: 0.18),
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(color: const Color(0xffF59E0B), width: 1.2),
+                      ),
+                      child: const Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.stars_rounded, size: 16, color: Color(0xffF59E0B)),
+                          SizedBox(width: 6),
+                          Text(
+                            "WELCOME SPECIAL OFFER 👑",
+                            style: TextStyle(
+                              fontSize: 11.5,
+                              fontWeight: FontWeight.w800,
+                              color: Color(0xffF59E0B),
+                              letterSpacing: 0.8,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
 
                   // Crown Icon badge with luxury glow
                   Container(
@@ -676,6 +750,21 @@ class _ProScreenState extends State<ProScreen> with WidgetsBindingObserver {
                       height: 1.4,
                     ),
                   ),
+                  if (widget.isFromOnboarding) ...[
+                    const SizedBox(height: 16),
+                    TextButton(
+                      onPressed: _handleCloseOrSkip,
+                      child: const Text(
+                        "Continue with Free Version →",
+                        style: TextStyle(
+                          color: Color(0xff94A3B8),
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          decoration: TextDecoration.underline,
+                        ),
+                      ),
+                    ),
+                  ],
                   const SizedBox(height: 20),
                 ],
               ),

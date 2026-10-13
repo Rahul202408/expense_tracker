@@ -41,7 +41,19 @@ class NotificationService {
   static const String _keyDailyEnabled = 'pref_daily_reminder_enabled';
   static const String _keyDailyHour = 'pref_daily_reminder_hour';
   static const String _keyDailyMinute = 'pref_daily_reminder_minute';
+
+  static const String _keyMorningEnabled = 'pref_morning_reminder_enabled';
+  static const String _keyMorningHour = 'pref_morning_reminder_hour';
+  static const String _keyMorningMinute = 'pref_morning_reminder_minute';
+
   static const String _keyBudgetAlertEnabled = 'pref_budget_alert_enabled';
+
+  // Notification IDs
+  static const int idEveningReminder = 1001;
+  static const int idMorningReminder = 1002;
+  static const int idBudget80 = 2001;
+  static const int idBudget100 = 2002;
+  static const int idTest = 9999;
 
   // Track last triggered alert state to prevent duplicate notifications in a single session
   bool _alert80Triggered = false;
@@ -154,25 +166,50 @@ class NotificationService {
       debugPrint("App opened from notification: ${message.notification?.title}");
     });
 
-    // 9. Sync Daily Notification from saved SharedPreferences preferences
+    // 9. Sync Daily Notifications (Morning 10:00 AM + Evening 8:00 PM) from SharedPreferences
     await syncDailyNotificationFromPrefs();
   }
 
-  /// Synchronize daily scheduled notification with SharedPreferences settings
+  /// Synchronize daily scheduled notifications (Morning 10:00 AM + Evening 8:00 PM) with SharedPreferences settings
   Future<void> syncDailyNotificationFromPrefs() async {
     final prefs = await SharedPreferences.getInstance();
-    final bool isEnabled = prefs.getBool(_keyDailyEnabled) ?? true;
-    final int hour = prefs.getInt(_keyDailyHour) ?? 20; // Default 8:00 PM
-    final int minute = prefs.getInt(_keyDailyMinute) ?? 0;
 
-    if (isEnabled) {
-      await scheduleDailyNotification(hour: hour, minute: minute);
+    // 1. Morning Reminder (Default: Enabled at 10:00 AM)
+    final bool isMorningEnabled = prefs.getBool(_keyMorningEnabled) ?? true;
+    final int morningHour = prefs.getInt(_keyMorningHour) ?? 10; // Default 10:00 AM
+    final int morningMinute = prefs.getInt(_keyMorningMinute) ?? 0;
+
+    if (isMorningEnabled) {
+      await scheduleMorningNotification(hour: morningHour, minute: morningMinute);
+    } else {
+      await cancelMorningNotification();
+    }
+
+    // 2. Evening Reminder (Default: Enabled at 8:00 PM)
+    final bool isDailyEnabled = prefs.getBool(_keyDailyEnabled) ?? true;
+    final int eveningHour = prefs.getInt(_keyDailyHour) ?? 20; // Default 8:00 PM
+    final int eveningMinute = prefs.getInt(_keyDailyMinute) ?? 0;
+
+    if (isDailyEnabled) {
+      await scheduleEveningNotification(hour: eveningHour, minute: eveningMinute);
     } else {
       await cancelDailyNotification();
     }
   }
 
   /// Getters for Notification Preferences
+  Future<bool> getIsMorningReminderEnabled() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getBool(_keyMorningEnabled) ?? true;
+  }
+
+  Future<TimeOfDay> getMorningReminderTime() async {
+    final prefs = await SharedPreferences.getInstance();
+    final int hour = prefs.getInt(_keyMorningHour) ?? 10; // Default 10:00 AM
+    final int minute = prefs.getInt(_keyMorningMinute) ?? 0;
+    return TimeOfDay(hour: hour, minute: minute);
+  }
+
   Future<bool> getIsDailyReminderEnabled() async {
     final prefs = await SharedPreferences.getInstance();
     return prefs.getBool(_keyDailyEnabled) ?? true;
@@ -191,6 +228,19 @@ class NotificationService {
   }
 
   /// Setters for Notification Preferences
+  Future<void> setMorningReminderEnabled(bool enabled) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_keyMorningEnabled, enabled);
+    await syncDailyNotificationFromPrefs();
+  }
+
+  Future<void> setMorningReminderTime(TimeOfDay time) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt(_keyMorningHour, time.hour);
+    await prefs.setInt(_keyMorningMinute, time.minute);
+    await syncDailyNotificationFromPrefs();
+  }
+
   Future<void> setDailyReminderEnabled(bool enabled) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(_keyDailyEnabled, enabled);
@@ -222,7 +272,7 @@ class NotificationService {
       if (!_alert100Triggered) {
         _alert100Triggered = true;
         await showLocalNotification(
-          id: 2002,
+          id: idBudget100,
           title: "🚨 Budget Limit Exceeded! (100%)",
           body: "You have crossed 100% of your budget limit. Check your spending!",
         );
@@ -231,7 +281,7 @@ class NotificationService {
       if (!_alert80Triggered) {
         _alert80Triggered = true;
         await showLocalNotification(
-          id: 2001,
+          id: idBudget80,
           title: "⚠️ High Spending Alert! (80%)",
           body: "You have spent over 80% of your total budget. Spend wisely!",
         );
@@ -281,16 +331,18 @@ class NotificationService {
     );
   }
 
-  /// Schedule a Daily Recurring Notification at given hour and minute (24-hour format)
-  Future<void> scheduleDailyNotification({
+  /// Internal recurring scheduler
+  Future<void> _scheduleRecurringDaily({
+    required int id,
     required int hour,
     required int minute,
-    String title = "Daily Expense Reminder 📝",
-    String body = "Don't forget to track your daily expenses today!",
+    required String title,
+    required String body,
+    String tag = "Daily",
   }) async {
     try {
-      // First cancel existing to prevent any duplicates or orphaned triggers
-      await _localNotifications.cancel(id: 1001);
+      // Cancel previous notification with this ID
+      await _localNotifications.cancel(id: id);
 
       final tz.TZDateTime now = tz.TZDateTime.now(tz.local);
       tz.TZDateTime scheduledDate = tz.TZDateTime(
@@ -321,7 +373,7 @@ class NotificationService {
       } catch (_) {}
 
       await _localNotifications.zonedSchedule(
-        id: 1001,
+        id: id,
         title: title,
         body: body,
         scheduledDate: scheduledDate,
@@ -347,25 +399,85 @@ class NotificationService {
       );
 
       debugPrint(
-        "Daily notification successfully scheduled for ${hour.toString().padLeft(2, '0')}:${minute.toString().padLeft(2, '0')} daily (Mode: $scheduleMode, Next: $scheduledDate)",
+        "$tag reminder (id: $id) successfully scheduled for ${hour.toString().padLeft(2, '0')}:${minute.toString().padLeft(2, '0')} daily (Mode: $scheduleMode, Next: $scheduledDate)",
       );
     } catch (e) {
-      debugPrint("Error scheduling daily notification: $e");
+      debugPrint("Error scheduling $tag notification: $e");
     }
+  }
+
+  /// Schedule Morning Reminder (Default 10:00 AM)
+  Future<void> scheduleMorningNotification({
+    int hour = 10,
+    int minute = 0,
+    String title = "Good Morning! ☀️ Plan Today's Budget",
+    String body = "Start your day smart! Set your daily spending limit and track expenses in 3 taps.",
+  }) async {
+    await _scheduleRecurringDaily(
+      id: idMorningReminder,
+      hour: hour,
+      minute: minute,
+      title: title,
+      body: body,
+      tag: "Morning",
+    );
+  }
+
+  /// Schedule Evening Reminder (Default 8:00 PM)
+  Future<void> scheduleEveningNotification({
+    int hour = 20,
+    int minute = 0,
+    String title = "Daily Expense Reminder 📝",
+    String body = "Don't forget to track your daily expenses today!",
+  }) async {
+    await _scheduleRecurringDaily(
+      id: idEveningReminder,
+      hour: hour,
+      minute: minute,
+      title: title,
+      body: body,
+      tag: "Evening",
+    );
+  }
+
+  /// Backward-compatible method for Daily / Evening Reminder
+  Future<void> scheduleDailyNotification({
+    required int hour,
+    required int minute,
+    String title = "Daily Expense Reminder 📝",
+    String body = "Don't forget to track your daily expenses today!",
+  }) async {
+    await scheduleEveningNotification(
+      hour: hour,
+      minute: minute,
+      title: title,
+      body: body,
+    );
   }
 
   /// Send an instant test reminder notification so the user can verify immediately
   Future<void> sendTestNotification() async {
     await showLocalNotification(
-      id: 9999,
-      title: "Daily Expense Reminder 📝 (Test)",
-      body: "Great! Your 8:00 PM daily reminder is working properly. Don't forget to track your expenses!",
+      id: idTest,
+      title: "Good Morning! ☀️ Plan Today's Budget (Test)",
+      body: "Great! Morning (10:00 AM) and Evening (8:00 PM) reminders are active & working properly!",
     );
   }
 
-  /// Cancel all scheduled daily notifications if needed
+  /// Cancel Morning Reminder (ID 1002)
+  Future<void> cancelMorningNotification() async {
+    await _localNotifications.cancel(id: idMorningReminder);
+  }
+
+  /// Cancel Evening Reminder (ID 1001)
   Future<void> cancelDailyNotification() async {
-    await _localNotifications.cancel(id: 1001);
+    await _localNotifications.cancel(id: idEveningReminder);
+  }
+
+  /// Cancel both Morning and Evening scheduled reminders
+  Future<void> cancelAllDailyNotifications() async {
+    await _localNotifications.cancel(id: idMorningReminder);
+    await _localNotifications.cancel(id: idEveningReminder);
   }
 }
 

@@ -1,12 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_text_styles.dart';
 import '../../widgets/custom_page_indicator.dart';
 import '../../widgets/primary_button.dart';
 import 'onboarding_data.dart';
-import '../auth/login_screen.dart';
+import '../pro/pro_screen.dart';
 import '../../services/app_open_ad_manager.dart';
 
 class OnboardingScreen extends StatefulWidget {
@@ -27,19 +26,12 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     AppOpenAdManager().setAdSuppressed(true);
   }
 
-  Future<void> finishOnboarding() async {
-    try {
-      final prefs = await SharedPreferences.getInstance().timeout(const Duration(seconds: 2));
-      await prefs.setBool("onboarding", true);
-    } catch (e) {
-      debugPrint("finishOnboarding SharedPreferences note: $e");
-    }
-
-    if (!mounted) return;
-
+  void finishOnboarding() {
     Navigator.pushReplacement(
       context,
-      MaterialPageRoute(builder: (_) => const LoginScreen()),
+      MaterialPageRoute(
+        builder: (_) => const ProScreen(isFromOnboarding: true),
+      ),
     );
   }
 
@@ -66,8 +58,14 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final scaffoldBg = isDark ? const Color(0xff0F172A) : AppColors.background;
+    final titleColor = isDark ? Colors.white : AppColors.black;
+    final descColor = isDark ? const Color(0xff94A3B8) : AppColors.grey;
+    final skipColor = isDark ? const Color(0xff34D399) : AppColors.primary;
+
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: scaffoldBg,
 
       body: SafeArea(
         child: Padding(
@@ -83,7 +81,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                   child: Text(
                     "Skip",
                     style: AppTextStyles.body.copyWith(
-                      color: AppColors.primary,
+                      color: skipColor,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
@@ -121,14 +119,14 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                                 height: 200,
                                 width: double.infinity,
                                 decoration: BoxDecoration(
-                                  color: AppColors.primary.withValues(alpha: 0.08),
+                                  color: AppColors.primary.withValues(alpha: isDark ? 0.15 : 0.08),
                                   borderRadius: BorderRadius.circular(24),
                                 ),
-                                child: const Center(
+                                child: Center(
                                   child: Icon(
                                     Icons.account_balance_wallet_rounded,
                                     size: 64,
-                                    color: AppColors.primary,
+                                    color: skipColor,
                                   ),
                                 ),
                               );
@@ -141,7 +139,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                         Text(
                           page.title,
                           textAlign: TextAlign.center,
-                          style: AppTextStyles.title,
+                          style: AppTextStyles.title.copyWith(color: titleColor),
                         ),
 
                         const SizedBox(height: 14),
@@ -151,7 +149,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                           child: Text(
                             page.description,
                             textAlign: TextAlign.center,
-                            style: AppTextStyles.body,
+                            style: AppTextStyles.body.copyWith(color: descColor),
                           ),
                         ),
                       ],

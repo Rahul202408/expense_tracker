@@ -39,11 +39,18 @@ class _MainScreenState extends State<MainScreen> {
     // Allow dashboard UI to render smoothly before checking and triggering contextual prompts
     Future.delayed(const Duration(milliseconds: 1400), () async {
       if (mounted) {
-        // High priority: Check if new version is released on Google Play Store
-        await AppUpdateService().checkForUpdate(context);
-        if (mounted) {
-          AppPromptService().checkAndTriggerPrompts(context);
-        }
+        // Show App Open Ad on cold start if available and ready
+        AppOpenAdManager().showAdIfAvailable(
+          onComplete: () async {
+            if (mounted) {
+              // High priority: Check if new version is released on Google Play Store
+              await AppUpdateService().checkForUpdate(context);
+              if (mounted) {
+                AppPromptService().checkAndTriggerPrompts(context);
+              }
+            }
+          },
+        );
       }
     });
   }

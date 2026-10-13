@@ -12,6 +12,7 @@ import 'widgets/auth_text_field.dart';
 import '../../services/auth_service.dart';
 import '../../services/app_open_ad_manager.dart';
 import '../main_screen.dart';
+import 'initial_currency_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -63,7 +64,7 @@ class _LoginScreenState extends State<LoginScreen> {
         Provider.of<ProProvider>(context, listen: false).syncFromFirestore();
         Navigator.pushAndRemoveUntil(
           context,
-          MaterialPageRoute(builder: (_) => const MainScreen()),
+          MaterialPageRoute(builder: (_) => const InitialCurrencyScreen()),
           (route) => false,
         );
       } else if (result != "Google Sign-In Cancelled") {

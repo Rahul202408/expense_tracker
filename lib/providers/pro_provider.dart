@@ -44,12 +44,10 @@ class ProProvider with ChangeNotifier {
         notifyListeners();
       });
 
+      _isPro = await _iapService.getIsPro();
+      _activePlanId = await _iapService.getActivePlanId();
       final currentUser = FirebaseAuth.instance.currentUser;
-      if (currentUser == null) {
-        _isPro = false;
-        _activePlanId = null;
-        await _iapService.clearProStatusLocally();
-      } else {
+      if (currentUser != null) {
         await _iapService.syncProStatusFromFirestore();
         _isPro = await _iapService.getIsPro();
         _activePlanId = await _iapService.getActivePlanId();

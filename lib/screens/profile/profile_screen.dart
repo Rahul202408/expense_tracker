@@ -426,7 +426,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           ),
                         ),
                         child: const Text(
-                          "v1.3.5 (35)",
+                          "v1.3.8 (38)",
                           style: TextStyle(
                             fontSize: 11,
                             fontWeight: FontWeight.w700,
@@ -520,7 +520,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       ),
                       const SizedBox(height: 8),
                       Text(
-                        "Expense Tracker • Version 1.3.5 (Build 35)",
+                        "Expense Tracker • Version 1.3.8 (Build 38)",
                         style: TextStyle(
                           fontSize: 11,
                           fontWeight: FontWeight.w500,
@@ -1421,7 +1421,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             Icon(Icons.verified_rounded, size: 14, color: Color(0xff10B981)),
                             SizedBox(width: 5),
                             Text(
-                              "Version 1.3.5 (Build 35)",
+                              "Version 1.3.8 (Build 38)",
                               style: TextStyle(
                                 fontWeight: FontWeight.w800,
                                 color: Color(0xff10B981),
@@ -1660,6 +1660,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
         : Colors.black.withValues(alpha: 0.06);
 
     // Initial values loaded from NotificationService
+    bool isMorningReminderEnabled = await notifService.getIsMorningReminderEnabled();
+    TimeOfDay morningReminderTime = await notifService.getMorningReminderTime();
     bool isDailyReminderEnabled = await notifService.getIsDailyReminderEnabled();
     bool isBudgetAlertEnabled = await notifService.getIsBudgetAlertEnabled();
     TimeOfDay reminderTime = await notifService.getDailyReminderTime();
@@ -1736,7 +1738,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                               ),
                               const SizedBox(height: 2),
                               Text(
-                                "Never miss daily expense logging",
+                                "Never miss daily expense tracking",
                                 style: TextStyle(
                                   fontSize: 12,
                                   color: subtitleTextColor,
@@ -1757,7 +1759,168 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
                     const SizedBox(height: 20),
 
-                    // Card 1: Daily Log Reminder Card
+                    // Card 1: Morning Budget Reminder Card (10:00 AM)
+                    Container(
+                      decoration: BoxDecoration(
+                        color: cardBgColor,
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(
+                          color: isMorningReminderEnabled
+                              ? const Color(0xffF59E0B).withValues(alpha: 0.4)
+                              : cardBorderColor,
+                          width: 1.2,
+                        ),
+                      ),
+                      child: Column(
+                        children: [
+                          Padding(
+                            padding: const EdgeInsets.fromLTRB(14, 12, 10, 12),
+                            child: Row(
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.all(10),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xffF59E0B).withValues(alpha: 0.12),
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: const Icon(
+                                    Icons.wb_sunny_rounded,
+                                    color: Color(0xffF59E0B),
+                                    size: 22,
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        "Morning Budget Reminder",
+                                        style: TextStyle(
+                                          fontWeight: FontWeight.w800,
+                                          fontSize: 14,
+                                          color: titleTextColor,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 2),
+                                      Text(
+                                        "Plan budget & start your day (10:00 AM)",
+                                        style: TextStyle(
+                                          fontSize: 11,
+                                          color: subtitleTextColor,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                Switch.adaptive(
+                                  value: isMorningReminderEnabled,
+                                  activeColor: const Color(0xffF59E0B),
+                                  onChanged: (val) async {
+                                    setStateModal(() => isMorningReminderEnabled = val);
+                                    await notifService.setMorningReminderEnabled(val);
+                                  },
+                                ),
+                              ],
+                            ),
+                          ),
+
+                          // If enabled, display clickable Time Picker row
+                          if (isMorningReminderEnabled) ...[
+                            Divider(height: 1, color: cardBorderColor),
+                            InkWell(
+                              onTap: () async {
+                                final TimeOfDay? picked = await showTimePicker(
+                                  context: ctx,
+                                  initialTime: morningReminderTime,
+                                  builder: (context, child) {
+                                    return Theme(
+                                      data: Theme.of(context).copyWith(
+                                        colorScheme: ColorScheme.fromSeed(
+                                          seedColor: const Color(0xffF59E0B),
+                                          brightness: isDark ? Brightness.dark : Brightness.light,
+                                        ),
+                                      ),
+                                      child: child!,
+                                    );
+                                  },
+                                );
+                                if (picked != null) {
+                                  setStateModal(() => morningReminderTime = picked);
+                                  await notifService.setMorningReminderTime(picked);
+                                  if (context.mounted) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        content: Text("Morning reminder set for ${formatTime(picked)} daily!"),
+                                        backgroundColor: const Color(0xffF59E0B),
+                                        duration: const Duration(seconds: 2),
+                                      ),
+                                    );
+                                  }
+                                }
+                              },
+                              borderRadius: const BorderRadius.vertical(bottom: Radius.circular(20)),
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                                child: Row(
+                                  children: [
+                                    const Icon(
+                                      Icons.schedule_rounded,
+                                      size: 18,
+                                      color: Color(0xffF59E0B),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Text(
+                                      "Reminder Time",
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w700,
+                                        color: subtitleTextColor,
+                                      ),
+                                    ),
+                                    const Spacer(),
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                                      decoration: BoxDecoration(
+                                        color: const Color(0xffF59E0B).withValues(alpha: 0.12),
+                                        borderRadius: BorderRadius.circular(10),
+                                        border: Border.all(
+                                          color: const Color(0xffF59E0B).withValues(alpha: 0.3),
+                                          width: 1,
+                                        ),
+                                      ),
+                                      child: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Text(
+                                            formatTime(morningReminderTime),
+                                            style: const TextStyle(
+                                              fontSize: 12,
+                                              fontWeight: FontWeight.w800,
+                                              color: Color(0xffF59E0B),
+                                            ),
+                                          ),
+                                          const SizedBox(width: 4),
+                                          const Icon(
+                                            Icons.edit_rounded,
+                                            size: 13,
+                                            color: Color(0xffF59E0B),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+
+                    const SizedBox(height: 14),
+
+                    // Card 2: Evening Daily Log Reminder Card (8:00 PM)
                     Container(
                       decoration: BoxDecoration(
                         color: cardBgColor,
@@ -1793,7 +1956,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                     crossAxisAlignment: CrossAxisAlignment.start,
                                     children: [
                                       Text(
-                                        "Daily Log Reminder",
+                                        "Evening Expense Reminder",
                                         style: TextStyle(
                                           fontWeight: FontWeight.w800,
                                           fontSize: 14,
@@ -1802,7 +1965,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                       ),
                                       const SizedBox(height: 2),
                                       Text(
-                                        "Gentle reminder to record expenses",
+                                        "Gentle reminder to record expenses (8:00 PM)",
                                         style: TextStyle(
                                           fontSize: 11,
                                           color: subtitleTextColor,

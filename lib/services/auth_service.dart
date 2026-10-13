@@ -218,9 +218,12 @@ class AuthService {
         return true;
       }
 
-      // If Firebase Auth has NO authenticated user, clear stale local session flags
       final prefs = await SharedPreferences.getInstance();
-      await prefs.setBool(_prefIsLoggedIn, false);
+      final bool wasLoggedIn = prefs.getBool(_prefIsLoggedIn) ?? false;
+      final String? uid = prefs.getString(_prefUserUid);
+      if (wasLoggedIn && uid != null && uid.isNotEmpty) {
+        return true;
+      }
       return false;
     } catch (_) {
       return _auth.currentUser != null;
@@ -405,8 +408,6 @@ class AuthService {
         serverClientId:
             '567397044370-v3lldaotf0uuu3h5p3tbr0p4ul2o2ot7.apps.googleusercontent.com',
       );
-
-      await googleSignIn.signOut();
 
       final GoogleSignInAccount? googleUser = await googleSignIn.signIn();
 

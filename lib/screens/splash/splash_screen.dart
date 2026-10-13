@@ -46,7 +46,7 @@ class _SplashScreenState extends State<SplashScreen>
           .authStateChanges()
           .firstWhere((u) => u != null)
           .timeout(
-            const Duration(milliseconds: 3000),
+            const Duration(milliseconds: 4500),
             onTimeout: () {
               try {
                 return FirebaseAuth.instance.currentUser;
@@ -176,10 +176,10 @@ class _SplashScreenState extends State<SplashScreen>
 
       final authService = AuthService();
 
-      // 3. Resolve user auth with timeout
+      // 3. Resolve user auth
       User? user;
       try {
-        user = await _authRestoreFuture.timeout(const Duration(seconds: 3));
+        user = await _authRestoreFuture.timeout(const Duration(milliseconds: 4600));
       } catch (_) {}
       try {
         user ??= FirebaseAuth.instance.currentUser;
@@ -195,25 +195,24 @@ class _SplashScreenState extends State<SplashScreen>
         user ??= FirebaseAuth.instance.currentUser;
       } catch (_) {}
 
-      // 4. Session verification: strictly requires a non-null authenticated Firebase user
-      final bool hasValidSession = user != null;
+      // 4. Session verification:
+      // Valid if Firebase has an authenticated user OR if persistent storage confirms user is logged in
+      final bool wasLoggedInLocally = prefs?.getBool("is_user_logged_in") ?? false;
+      final String? loggedUid = prefs?.getString("logged_user_uid");
+      final bool hasLocalSession = wasLoggedInLocally && (loggedUid != null && loggedUid.isNotEmpty);
 
-      // Clean up any stale ghost login flags so state is 100% consistent
-      if (!hasValidSession) {
-        try {
-          await prefs?.setBool("is_user_logged_in", false);
-          await prefs?.remove("logged_user_uid");
-        } catch (_) {}
-      }
+      final bool hasValidSession = user != null || hasLocalSession;
 
       if (!mounted) return;
 
       // 5. Navigate to Home or Lock screen if session is valid
       if (hasValidSession) {
-        try {
-          await authService.recordUserLoginSession(user);
-          await authService.updateLastActiveTime();
-        } catch (_) {}
+        if (user != null) {
+          try {
+            await authService.recordUserLoginSession(user);
+            await authService.updateLastActiveTime();
+          } catch (_) {}
+        }
 
         bool isLockEnabled = false;
         try {
@@ -609,7 +608,7 @@ class _SplashScreenState extends State<SplashScreen>
                           ),
                           const SizedBox(height: 4),
                           Text(
-                            "Version 1.3.5",
+                            "Version 1.3.8",
                             style: TextStyle(
                               fontSize: 10,
                               fontWeight: FontWeight.w600,

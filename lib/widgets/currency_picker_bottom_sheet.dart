@@ -59,7 +59,7 @@ class _CurrencyPickerModalSheetState extends State<_CurrencyPickerModalSheet> {
     }).toList();
   }
 
-  static const List<String> _popularCodes = ['INR', 'USD', 'EUR', 'GBP', 'AED', 'SAR', 'CAD', 'SGD'];
+  static const List<String> _popularCodes = ['USD', 'EUR', 'GBP', 'INR', 'AED', 'SAR', 'CAD', 'SGD'];
 
   @override
   Widget build(BuildContext context) {
