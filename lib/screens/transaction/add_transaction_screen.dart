@@ -5,6 +5,7 @@ import '../../models/transaction_model.dart';
 import '../../services/transaction_service.dart';
 import '../../services/auth_service.dart';
 import '../../widgets/three_d_tilt_card.dart';
+import '../../widgets/banner_ad_widget.dart';
 import '../../providers/pro_provider.dart';
 import '../../providers/currency_provider.dart';
 import '../../services/firebase_analytics_service.dart';
@@ -721,7 +722,14 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
                 ],
               ),
 
-              const SizedBox(height: 20),
+              const SizedBox(height: 18),
+
+              // AdMob Banner Ad in Middle (Hidden for Pro users)
+              const BannerAdWidget(
+                margin: EdgeInsets.symmetric(vertical: 4),
+              ),
+
+              const SizedBox(height: 18),
 
               // Date Picker Card
               ThreeDTiltCard(

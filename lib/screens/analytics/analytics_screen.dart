@@ -17,6 +17,7 @@ import 'widgets/category_spend_card.dart';
 import 'widgets/expense_pie_chart.dart';
 import 'widgets/spending_trend_bar_chart.dart';
 import '../../widgets/app_shimmer.dart';
+import '../../widgets/banner_ad_widget.dart';
 
 class AnalyticsScreen extends StatefulWidget {
   const AnalyticsScreen({super.key});
@@ -844,6 +845,13 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
                       isExpense: _isExpenseView,
                     );
                   }),
+
+                const SizedBox(height: 16),
+
+                // AdMob Banner Ad at the bottom of Financial Analytics (Hidden for Pro users)
+                const BannerAdWidget(
+                  margin: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                ),
 
                 const SizedBox(height: 125),
               ],
