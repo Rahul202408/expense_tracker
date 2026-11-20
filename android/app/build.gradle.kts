@@ -48,8 +48,12 @@ android {
 
     buildTypes {
         release {
-            isMinifyEnabled = false
-            isShrinkResources = false
+            isMinifyEnabled = true
+            isShrinkResources = true
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro"
+            )
             signingConfig = if (keystorePropertiesFile.exists()) {
                 signingConfigs.getByName("release")
             } else {
@@ -60,7 +64,7 @@ android {
 
     sourceSets {
         getByName("main") {
-            java.setSrcDirs(listOf("src/main/kotlin", "src/main/java"))
+            java.setSrcDirs(listOf("src/main/kotlin"))
         }
     }
 }

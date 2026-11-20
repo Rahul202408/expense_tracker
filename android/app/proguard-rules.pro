@@ -7,24 +7,9 @@
 -keep public class * extends android.content.BroadcastReceiver
 -keep public class * extends android.content.ContentProvider { *; }
 
-# Firebase SDK & Plugins (Explicitly keep FlutterFirebaseMessagingInitProvider)
--keep class com.google.firebase.** { *; }
--keep class io.flutter.plugins.firebase.** { *; }
--keep class io.flutter.plugins.firebase.messaging.** { *; }
--keep class io.flutter.plugins.firebase.core.** { *; }
--keep class io.flutter.plugins.firebase.auth.** { *; }
--keep class io.flutter.plugins.firebase.firestore.** { *; }
--keep class io.flutter.plugins.firebase.analytics.** { *; }
-
-# Google Play Billing & In-App Purchase
--keep class com.android.billingclient.** { *; }
--keep class io.flutter.plugins.inapppurchase.** { *; }
-
-# Google Mobile Ads (AdMob)
--keep class com.google.android.gms.ads.** { *; }
--keep class io.flutter.plugins.googlemobileads.** { *; }
-
+# ==============================================================================
 # Flutter Engine, Facade & Plugin Registrant
+# ==============================================================================
 -keep class com.trtech.expense_tracker.MainActivity { *; }
 -keep class io.flutter.facade.** { *; }
 -keep class io.flutter.** { *; }
@@ -42,7 +27,39 @@
     native <methods>;
 }
 
-# Flutter Local Notifications, WorkManager & Biometrics
+# ==============================================================================
+# Firebase Services & Plugins
+# ==============================================================================
+-keep class com.google.firebase.** { *; }
+-keep class io.flutter.plugins.firebase.** { *; }
+-keep class io.flutter.plugins.firebase.messaging.** { *; }
+-keep class io.flutter.plugins.firebase.core.** { *; }
+-keep class io.flutter.plugins.firebase.auth.** { *; }
+-keep class io.flutter.plugins.firebase.firestore.** { *; }
+-keep class io.flutter.plugins.firebase.analytics.** { *; }
+
+# ==============================================================================
+# Google Sign In
+# ==============================================================================
+-keep class com.google.android.gms.auth.api.signin.** { *; }
+-keep class com.google.android.gms.auth.** { *; }
+-keep class io.flutter.plugins.googlesignin.** { *; }
+
+# ==============================================================================
+# Google Play Billing & In-App Purchase
+# ==============================================================================
+-keep class com.android.billingclient.** { *; }
+-keep class io.flutter.plugins.inapppurchase.** { *; }
+
+# ==============================================================================
+# Google Mobile Ads (AdMob)
+# ==============================================================================
+-keep class com.google.android.gms.ads.** { *; }
+-keep class io.flutter.plugins.googlemobileads.** { *; }
+
+# ==============================================================================
+# Flutter Local Notifications, WorkManager & Biometrics (local_auth)
+# ==============================================================================
 -keep class com.dexterous.flutterlocalnotifications.** { *; }
 -dontwarn com.dexterous.flutterlocalnotifications.**
 -keep class io.flutter.plugins.localauth.** { *; }
@@ -53,36 +70,54 @@
 -dontwarn androidx.activity.**
 -dontwarn androidx.fragment.app.**
 
+# ==============================================================================
+# Flutter Community Plus Plugins (connectivity_plus, share_plus)
+# ==============================================================================
+-keep class dev.fluttercommunity.plus.** { *; }
+-dontwarn dev.fluttercommunity.plus.**
 
-# Attributes & Serialization
+# ==============================================================================
+# Flutter Timezone & Splash Plugins
+# ==============================================================================
+-keep class net.wolverinebeach.flutter_timezone.** { *; }
+-keep class com.whelkhosting.flutter_timezone.** { *; }
+-keep class net.jonhanson.flutter_native_timezone.** { *; }
+-keep class net.jonhanson.flutter_native_splash.** { *; }
+
+# ==============================================================================
+# Storage & Utility Plugins (path_provider, shared_preferences, url_launcher)
+# ==============================================================================
+-keep class io.flutter.plugins.pathprovider.** { *; }
+-keep class io.flutter.plugins.sharedpreferences.** { *; }
+-keep class io.flutter.plugins.urllauncher.** { *; }
+
+# ==============================================================================
+# Printing & PDF Plugins
+# ==============================================================================
+-keep class net.nfet.flutter.printing.** { *; }
+-dontwarn net.nfet.flutter.printing.**
+
+# ==============================================================================
+# Attributes, Annotations & Serialization
+# ==============================================================================
 -keepattributes *Annotation*
 -keepattributes Signature
 -keepattributes InnerClasses
 -keepattributes EnclosingMethod
--dontwarn java.lang.invoke.**
--dontwarn javax.annotation.**
-
-# Flutter Community Plus plugins (connectivity_plus, share_plus)
--keep class dev.fluttercommunity.plus.** { *; }
--dontwarn dev.fluttercommunity.plus.**
-
-# Flutter Native / Timezone plugins
--keep class net.jonhanson.flutter_native_timezone.** { *; }
--keep class com.whelkhosting.flutter_timezone.** { *; }
-
-# Printing & PDF plugins
--keep class net.nfet.flutter.printing.** { *; }
--dontwarn net.nfet.flutter.printing.**
-
-# Gson & JSON
 -keep class com.google.gson.** { *; }
 -dontwarn com.google.gson.**
-
-# AndroidX Core & AppCompat
 -keep class androidx.appcompat.** { *; }
 -dontwarn androidx.appcompat.**
 
+# Kotlin Coroutines
+-keep class kotlinx.coroutines.** { *; }
+-dontwarn kotlinx.coroutines.**
+
+# ==============================================================================
 # Suppress harmless third-party build warnings
+# ==============================================================================
+-dontwarn java.lang.invoke.**
+-dontwarn javax.annotation.**
 -dontwarn com.google.firebase.**
 -dontwarn com.google.android.gms.**
 -dontwarn com.google.android.gms.ads.**
